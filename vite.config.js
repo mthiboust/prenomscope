@@ -3,6 +3,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	plugins: [sveltekit()],
+	base: process.env.NODE_ENV === 'production' ? '/prenomscope/' : '/',
 	optimizeDeps: {
 		include: ['chart.js', 'chartjs-adapter-date-fns']
 	}
