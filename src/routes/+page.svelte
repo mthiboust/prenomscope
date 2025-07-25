@@ -152,7 +152,7 @@
               {getRankEmoji(rank)}
             </div>
             <div class="name">
-              <a href="/prenom?nom={encodeURIComponent(item.prenom)}" class="name-link">
+              <a href="prenom?nom={encodeURIComponent(item.prenom)}" class="name-link">
                 {item.prenom}
               </a>
             </div>

@@ -1,10 +1,12 @@
 <script>
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
   
   const navigation = [
-    { href: '/', label: 'Classements', icon: '📊' },
-    { href: '/prenom', label: 'Détails d\'un prénom', icon: '📈' },
-    { href: '/comparaison', label: 'Comparaison', icon: '⚖️' }
+    { href: base, label: 'Classements', icon: '📊' },
+    { href: `${base}/prenom`, label: 'Détails d\'un prénom', icon: '📈' },
+    { href: `${base}/comparaison`, label: 'Comparaison', icon: '⚖️' }
   ];
 </script>
 
@@ -25,7 +27,7 @@
           <li>
             <a 
               href={item.href}
-              class:active={$page.url.pathname === item.href}
+              class:active={$page.url.pathname === item.href || ($page.url.pathname.startsWith(item.href) && item.href !== base)}
             >
               <span class="icon">{item.icon}</span>
               {item.label}
