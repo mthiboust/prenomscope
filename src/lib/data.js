@@ -47,7 +47,7 @@ export async function loadDatabaseFile() {
   try {
     console.log("Loading database file...");
     
-    const response = await fetch("/data/names.duckdb");
+    const response = await fetch("./data/names.duckdb");
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
