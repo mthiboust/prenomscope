@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { getDataBySexYear, getAvailableYears } from '$lib/data.js';
+  import { getDataBySexYearWithRanking, getAvailableYears } from '$lib/data.js';
 
   let years = [];
   let selectedYear = 2024;
@@ -31,7 +31,7 @@
     
     try {
       const offset = (currentPage - 1) * itemsPerPage;
-      const result = await getDataBySexYear(selectedSex, selectedYear, offset, itemsPerPage);
+      const result = await getDataBySexYearWithRanking(selectedSex, selectedYear, offset, itemsPerPage);
       data = result.data;
       totalItems = result.total;
     } catch (err) {
@@ -69,6 +69,27 @@
     if (rank === 2) return '🥈';
     if (rank === 3) return '🥉';
     return `${rank}.`;
+  }
+
+  function getRankingDifference(item) {
+    if (!item.previous_rank) return null;
+    
+    const difference = item.previous_rank - item.current_rank;
+    return difference;
+  }
+
+  function formatRankingDifference(difference) {
+    if (difference === null) return '-';
+    if (difference === 0) return '0';
+    if (difference > 0) return `+${difference}`;
+    if (difference < 0) return `${difference}`;
+  }
+
+  function getRankingDifferenceClass(difference) {
+    if (difference === null) return '';
+    if (difference === 0) return 'no-change';
+    if (difference > 0) return 'improved';
+    if (difference < 0) return 'declined';
   }
 </script>
 
@@ -141,15 +162,20 @@
       <div class="ranking card">
         <div class="ranking-header">
           <div>Rang</div>
+          <div>Δ 1 an</div>
           <div>Prénom</div>
           <div>Naissances</div>
         </div>
         
         {#each data as item, index}
           {@const rank = (currentPage - 1) * itemsPerPage + index + 1}
+          {@const rankingDiff = getRankingDifference(item)}
           <div class="ranking-row" class:top-3={rank <= 3}>
             <div class="rank">
               {getRankEmoji(rank)}
+            </div>
+            <div class="ranking-diff" class:no-change={rankingDiff === 0} class:improved={rankingDiff > 0} class:declined={rankingDiff < 0}>
+              {formatRankingDifference(rankingDiff)}
             </div>
             <div class="name">
               <a href="prenom?nom={encodeURIComponent(item.prenom)}" class="name-link">
@@ -284,7 +310,7 @@
 
   .ranking-header {
     display: grid;
-    grid-template-columns: 80px 1fr 120px;
+    grid-template-columns: 80px 60px 1fr 120px;
     gap: 1rem;
     padding: 1rem;
     background: #f8fafc;
@@ -296,7 +322,7 @@
 
   .ranking-row {
     display: grid;
-    grid-template-columns: 80px 1fr 120px;
+    grid-template-columns: 80px 60px 1fr 120px;
     gap: 1rem;
     padding: 0.75rem 1rem;
     border-bottom: 1px solid #f1f5f9;
@@ -346,6 +372,26 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
+  }
+
+  .ranking-diff {
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .ranking-diff.improved {
+    color: #059669;
+  }
+
+  .ranking-diff.declined {
+    color: #dc2626;
+  }
+
+  .ranking-diff.no-change {
+    color: #6b7280;
   }
 
   .pagination {
@@ -413,7 +459,7 @@
 
     .ranking-header,
     .ranking-row {
-      grid-template-columns: 60px 1fr 80px;
+      grid-template-columns: 50px 40px 1fr 70px;
       gap: 0.5rem;
       padding: 0.5rem;
     }

@@ -294,3 +294,74 @@ export async function searchNamesByPattern(pattern, year = null, sex = null, lim
     throw err;
   }
 } 
+
+/**
+ * Get data for a specific sex and year with previous year ranking comparison
+ * @param {number} sex - Sex (1 = male, 2 = female)
+ * @param {number} year - The year to get data for
+ * @param {number} offset - Pagination offset
+ * @param {number} limit - Pagination limit
+ * @returns {Promise<Object>} Object with data array and total count
+ */
+export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit = 50) {
+  await ensureDatabase();
+  
+  try {
+    const previousYear = year - 1;
+    
+    // Get total count
+    const countResult = await conn.query(`
+      SELECT COUNT(*) as total
+      FROM prenoms
+      WHERE sexe = ${sex} AND periode = ${year}
+    `);
+    const total = Number(countResult.toArray()[0].total);
+
+    // Get current year data with previous year ranking
+    const result = await conn.query(`
+      WITH current_year AS (
+        SELECT 
+          prenom, 
+          valeur, 
+          sexe, 
+          periode,
+          ROW_NUMBER() OVER (ORDER BY valeur DESC) as current_rank
+        FROM prenoms
+        WHERE sexe = ${sex} AND periode = ${year}
+      ),
+      previous_year AS (
+        SELECT 
+          prenom, 
+          ROW_NUMBER() OVER (ORDER BY valeur DESC) as previous_rank
+        FROM prenoms
+        WHERE sexe = ${sex} AND periode = ${previousYear}
+      )
+      SELECT 
+        c.prenom,
+        c.valeur,
+        c.sexe,
+        c.periode,
+        c.current_rank,
+        COALESCE(p.previous_rank, NULL) as previous_rank
+      FROM current_year c
+      LEFT JOIN previous_year p ON UPPER(c.prenom) = UPPER(p.prenom)
+      ORDER BY c.current_rank
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+    
+    const data = result.toArray().map(row => ({
+      ...row,
+      prenom: formatName(row.prenom),
+      valeur: Number(row.valeur),
+      sexe: Number(row.sexe),
+      periode: Number(row.periode),
+      current_rank: Number(row.current_rank),
+      previous_rank: row.previous_rank ? Number(row.previous_rank) : null
+    }));
+    
+    return { data, total };
+  } catch (err) {
+    console.error("Error getting data by sex and year with ranking:", err);
+    throw err;
+  }
+} 
