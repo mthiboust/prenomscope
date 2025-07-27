@@ -41,33 +41,35 @@ export async function initDatabase() {
 }
 
 /**
- * Load and attach the DuckDB file
+ * Load and attach the Parquet file
  */
 export async function loadDatabaseFile() {
   try {
-    console.log("Loading database file...");
+    console.log("Loading parquet file...");
     
-    const response = await fetch("./data/names.duckdb");
+    const response = await fetch("./data/names.parquet");
+    
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
     }
     const buffer = await response.arrayBuffer();
-    console.log("Fetched file into ArrayBuffer, size:", buffer.byteLength);
+    console.log("Fetched parquet file into ArrayBuffer, size:", buffer.byteLength);
 
-    // Register the database file using the ArrayBuffer
-    await db.registerFileBuffer('readonly.duckdb', new Uint8Array(buffer));
-    console.log("File registered with DuckDB via buffer.");
+    // Register the parquet file using the ArrayBuffer
+    await db.registerFileBuffer('names.parquet', new Uint8Array(buffer));
+    console.log("Parquet file registered with DuckDB via buffer.");
 
-    await conn.query("ATTACH 'readonly.duckdb' AS mydb (READ_ONLY)");
+    // Create a view from the parquet file
+    await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('names.parquet')");
 
     const debug = await conn.query(`
-      SELECT * FROM pragma_database_list;
+      SELECT COUNT(*) as total_rows FROM prenoms;
     `);
     console.log(debug.toString());
     
-    console.log("Database file loaded successfully");
+    console.log("Parquet file loaded successfully");
   } catch (err) {
-    console.error("Error loading database file:", err);
+    console.error("Error loading parquet file:", err);
     throw err;
   }
 }
@@ -109,7 +111,7 @@ export async function getDataBySexYear(sex, year, offset = 0, limit = 50) {
     // Get total count
     const countResult = await conn.query(`
       SELECT COUNT(*) as total
-      FROM mydb.prenoms
+      FROM prenoms
       WHERE sexe = ${sex} AND periode = ${year}
     `);
     const total = Number(countResult.toArray()[0].total);
@@ -117,7 +119,7 @@ export async function getDataBySexYear(sex, year, offset = 0, limit = 50) {
     // Get data with pagination
     const result = await conn.query(`
       SELECT prenom, valeur, sexe, periode 
-      FROM mydb.prenoms
+      FROM prenoms
       WHERE sexe = ${sex} AND periode = ${year}
       ORDER BY valeur DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -151,7 +153,7 @@ export async function getDataByNameSexYear(name, sex, year) {
   try {
     const result = await conn.query(`
       SELECT prenom, valeur, sexe, periode 
-      FROM mydb.prenoms
+      FROM prenoms
       WHERE UPPER(prenom) = UPPER('${name}') AND sexe = ${sex} AND periode = ${year}
     `);
     
@@ -179,7 +181,7 @@ export async function getDataByName(name) {
   try {
     const result = await conn.query(`
       SELECT prenom, valeur, sexe, periode 
-      FROM mydb.prenoms
+      FROM prenoms
       WHERE UPPER(prenom) = UPPER('${name}')
       ORDER BY periode ASC, sexe
     `);
@@ -209,7 +211,7 @@ export async function getDataByNames(names) {
     const namesList = names.map(name => `'${name.toUpperCase()}'`).join(',');
     const result = await conn.query(`
       SELECT prenom, valeur, sexe, periode 
-      FROM mydb.prenoms
+      FROM prenoms
       WHERE UPPER(prenom) IN (${namesList})
       ORDER BY prenom, periode ASC, sexe
     `);
@@ -237,7 +239,7 @@ export async function getAvailableYears() {
   try {
     const result = await conn.query(`
       SELECT DISTINCT periode 
-      FROM mydb.prenoms
+      FROM prenoms
       ORDER BY periode DESC
     `);
     return result.toArray().map(row => Number(row.periode));
@@ -261,7 +263,7 @@ export async function searchNamesByPattern(pattern, year = null, sex = null, lim
   try {
     let query = `
       SELECT DISTINCT prenom, SUM(valeur) as total_valeur
-      FROM mydb.prenoms
+      FROM prenoms
       WHERE UPPER(prenom) LIKE UPPER('%${pattern}%')
     `;
     
