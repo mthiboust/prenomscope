@@ -71,10 +71,10 @@
     return `${rank}.`;
   }
 
-  function getRankingDifference(item) {
-    if (!item.previous_rank) return null;
+  function getRankingDifference(item, rankField) {
+    if (!item[rankField]) return null;
     
-    const difference = item.previous_rank - item.current_rank;
+    const difference = item[rankField] - item.current_rank;
     return difference;
   }
 
@@ -161,21 +161,38 @@
 
       <div class="ranking card">
         <div class="ranking-header">
-          <div>Rang</div>
-          <div>Δ 1 an</div>
-          <div>Prénom</div>
-          <div>Naissances</div>
+          <div class="header-cell">Rang</div>
+          <div class="header-delta-section">
+            <div class="header-main">Δ</div>
+            <div class="delta-group">
+              <div class="sub-header">1 an</div>
+              <div class="sub-header">5 ans</div>
+              <div class="sub-header">10 ans</div>
+            </div>
+          </div>
+          <div class="header-cell">Prénom</div>
+          <div class="header-cell">Naissances</div>
         </div>
         
         {#each data as item, index}
           {@const rank = (currentPage - 1) * itemsPerPage + index + 1}
-          {@const rankingDiff = getRankingDifference(item)}
+          {@const rankingDiff1 = getRankingDifference(item, 'previous_rank')}
+          {@const rankingDiff5 = getRankingDifference(item, 'five_years_rank')}
+          {@const rankingDiff10 = getRankingDifference(item, 'ten_years_rank')}
           <div class="ranking-row" class:top-3={rank <= 3}>
             <div class="rank">
               {getRankEmoji(rank)}
             </div>
-            <div class="ranking-diff" class:no-change={rankingDiff === 0} class:improved={rankingDiff > 0} class:declined={rankingDiff < 0}>
-              {formatRankingDifference(rankingDiff)}
+            <div class="delta-group">
+              <div class="ranking-diff" class:no-change={rankingDiff1 === 0} class:improved={rankingDiff1 > 0} class:declined={rankingDiff1 < 0}>
+                {formatRankingDifference(rankingDiff1)}
+              </div>
+              <div class="ranking-diff" class:no-change={rankingDiff5 === 0} class:improved={rankingDiff5 > 0} class:declined={rankingDiff5 < 0}>
+                {formatRankingDifference(rankingDiff5)}
+              </div>
+              <div class="ranking-diff" class:no-change={rankingDiff10 === 0} class:improved={rankingDiff10 > 0} class:declined={rankingDiff10 < 0}>
+                {formatRankingDifference(rankingDiff10)}
+              </div>
             </div>
             <div class="name">
               <a href="prenom?nom={encodeURIComponent(item.prenom)}" class="name-link">
@@ -310,7 +327,7 @@
 
   .ranking-header {
     display: grid;
-    grid-template-columns: 80px 60px 1fr 120px;
+    grid-template-columns: 80px 180px 1fr 120px;
     gap: 1rem;
     padding: 1rem;
     background: #f8fafc;
@@ -322,11 +339,61 @@
 
   .ranking-row {
     display: grid;
-    grid-template-columns: 80px 60px 1fr 120px;
+    grid-template-columns: 80px 180px 1fr 120px;
     gap: 1rem;
     padding: 0.75rem 1rem;
     border-bottom: 1px solid #f1f5f9;
     transition: background-color 0.2s ease;
+  }
+
+  .header-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
+    padding-right: 1rem;
+  }
+
+  .header-main {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .header-sub {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .sub-header {
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-align: center;
+    color: #6b7280;
+  }
+
+  .header-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .delta-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.25rem;
+    width: 100%;
+  }
+
+  .header-delta-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
   }
 
   .ranking-row:hover {
@@ -352,6 +419,7 @@
   .name {
     display: flex;
     align-items: center;
+    justify-content: center;
   }
 
   .name-link {
@@ -376,10 +444,12 @@
 
   .ranking-diff {
     font-weight: 600;
+    font-size: 0.8rem;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
+    min-width: 0;
   }
 
   .ranking-diff.improved {
@@ -459,9 +529,37 @@
 
     .ranking-header,
     .ranking-row {
-      grid-template-columns: 50px 40px 1fr 70px;
-      gap: 0.5rem;
+      grid-template-columns: 28px 140px 1fr 50px;
+      gap: 0.4rem;
       padding: 0.5rem;
+    }
+
+    .header-sub {
+      gap: 0.2rem;
+    }
+
+    .sub-header {
+      font-size: 0.62rem;
+    }
+
+    .delta-group {
+      gap: 0.2rem;
+    }
+
+    .ranking-diff {
+      font-size: 0.75rem;
+    }
+
+    .name-link {
+      font-size: 0.95rem;
+    }
+
+    .count {
+      font-size: 0.85rem;
+    }
+
+    .rank {
+      font-size: 1rem;
     }
 
     .pagination-controls {
@@ -471,6 +569,35 @@
 
     .page-numbers {
       order: -1;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .ranking-header,
+    .ranking-row {
+      grid-template-columns: 25px 120px 1fr 45px;
+      gap: 0.3rem;
+      padding: 0.4rem;
+    }
+
+    .sub-header {
+      font-size: 0.58rem;
+    }
+
+    .ranking-diff {
+      font-size: 0.7rem;
+    }
+
+    .name-link {
+      font-size: 0.85rem;
+    }
+
+    .count {
+      font-size: 0.75rem;
+    }
+
+    .rank {
+      font-size: 0.9rem;
     }
   }
 </style> 

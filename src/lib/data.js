@@ -296,7 +296,7 @@ export async function searchNamesByPattern(pattern, year = null, sex = null, lim
 } 
 
 /**
- * Get data for a specific sex and year with previous year ranking comparison
+ * Get data for a specific sex and year with ranking comparisons (1, 5, and 10 years)
  * @param {number} sex - Sex (1 = male, 2 = female)
  * @param {number} year - The year to get data for
  * @param {number} offset - Pagination offset
@@ -308,6 +308,8 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
   
   try {
     const previousYear = year - 1;
+    const fiveYearsAgo = year - 5;
+    const tenYearsAgo = year - 10;
     
     // Get total count
     const countResult = await conn.query(`
@@ -317,7 +319,7 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
     `);
     const total = Number(countResult.toArray()[0].total);
 
-    // Get current year data with previous year ranking
+    // Get current year data with ranking comparisons
     const result = await conn.query(`
       WITH current_year AS (
         SELECT 
@@ -335,6 +337,20 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
           ROW_NUMBER() OVER (ORDER BY valeur DESC) as previous_rank
         FROM prenoms
         WHERE sexe = ${sex} AND periode = ${previousYear}
+      ),
+      five_years_ago AS (
+        SELECT 
+          prenom, 
+          ROW_NUMBER() OVER (ORDER BY valeur DESC) as five_years_rank
+        FROM prenoms
+        WHERE sexe = ${sex} AND periode = ${fiveYearsAgo}
+      ),
+      ten_years_ago AS (
+        SELECT 
+          prenom, 
+          ROW_NUMBER() OVER (ORDER BY valeur DESC) as ten_years_rank
+        FROM prenoms
+        WHERE sexe = ${sex} AND periode = ${tenYearsAgo}
       )
       SELECT 
         c.prenom,
@@ -342,9 +358,13 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
         c.sexe,
         c.periode,
         c.current_rank,
-        COALESCE(p.previous_rank, NULL) as previous_rank
+        COALESCE(p.previous_rank, NULL) as previous_rank,
+        COALESCE(f.five_years_rank, NULL) as five_years_rank,
+        COALESCE(t.ten_years_rank, NULL) as ten_years_rank
       FROM current_year c
       LEFT JOIN previous_year p ON UPPER(c.prenom) = UPPER(p.prenom)
+      LEFT JOIN five_years_ago f ON UPPER(c.prenom) = UPPER(f.prenom)
+      LEFT JOIN ten_years_ago t ON UPPER(c.prenom) = UPPER(t.prenom)
       ORDER BY c.current_rank
       LIMIT ${limit} OFFSET ${offset}
     `);
@@ -356,7 +376,9 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
       sexe: Number(row.sexe),
       periode: Number(row.periode),
       current_rank: Number(row.current_rank),
-      previous_rank: row.previous_rank ? Number(row.previous_rank) : null
+      previous_rank: row.previous_rank ? Number(row.previous_rank) : null,
+      five_years_rank: row.five_years_rank ? Number(row.five_years_rank) : null,
+      ten_years_rank: row.ten_years_rank ? Number(row.ten_years_rank) : null
     }));
     
     return { data, total };
