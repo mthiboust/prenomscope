@@ -41,13 +41,13 @@ export async function initDatabase() {
 }
 
 /**
- * Load and attach the Parquet file
+ * Load and attach the Parquet file with normalized names
  */
 export async function loadDatabaseFile() {
   try {
-    console.log("Loading parquet file...");
+    console.log("Loading parquet file with normalized names...");
     
-    const response = await fetch("./data/names.parquet");
+    const response = await fetch("./data/names_with_normalized.parquet");
     
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -56,11 +56,11 @@ export async function loadDatabaseFile() {
     console.log("Fetched parquet file into ArrayBuffer, size:", buffer.byteLength);
 
     // Register the parquet file using the ArrayBuffer
-    await db.registerFileBuffer('names.parquet', new Uint8Array(buffer));
+    await db.registerFileBuffer('names_with_normalized.parquet', new Uint8Array(buffer));
     console.log("Parquet file registered with DuckDB via buffer.");
 
     // Create a view from the parquet file
-    await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('names.parquet')");
+    await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('names_with_normalized.parquet')");
 
     const debug = await conn.query(`
       SELECT COUNT(*) as total_rows FROM prenoms;
@@ -103,20 +103,26 @@ export function formatName(name) {
 // ========================================
 
 /**
- * Get data for a specific sex and year
+ * Get data for a specific sex and year with optional grouping
  * @param {number} sex - Sex (1 = male, 2 = female)
  * @param {number} year - The year to search in
  * @param {number} offset - Offset for pagination
  * @param {number} limit - Number of results per page
+ * @param {boolean} groupSimilar - Whether to group similar names
  * @returns {Promise<{data: Array, total: number}>} Array of matching records and total count
  */
-export async function getDataBySexYear(sex, year, offset = 0, limit = 50) {
+export async function getDataBySexYear(sex, year, offset = 0, limit = 50, groupSimilar = false) {
   await ensureDatabase();
   
   try {
+    let groupByClause = groupSimilar ? 'prenom_normalized' : 'prenom';
+    let selectClause = groupSimilar 
+      ? 'prenom_normalized as prenom, SUM(valeur) as valeur, sexe, periode'
+      : 'prenom, valeur, sexe, periode';
+    
     // Get total count
     const countResult = await conn.query(`
-      SELECT COUNT(*) as total
+      SELECT COUNT(DISTINCT ${groupByClause}) as total
       FROM prenoms
       WHERE sexe = ${sex} AND periode = ${year}
     `);
@@ -124,9 +130,10 @@ export async function getDataBySexYear(sex, year, offset = 0, limit = 50) {
 
     // Get data with pagination
     const result = await conn.query(`
-      SELECT prenom, valeur, sexe, periode 
+      SELECT ${selectClause}
       FROM prenoms
       WHERE sexe = ${sex} AND periode = ${year}
+      ${groupSimilar ? 'GROUP BY prenom_normalized, sexe, periode' : ''}
       ORDER BY valeur DESC
       LIMIT ${limit} OFFSET ${offset}
     `);
@@ -151,16 +158,21 @@ export async function getDataBySexYear(sex, year, offset = 0, limit = 50) {
  * @param {string} name - The name to search for
  * @param {number} sex - Sex (1 = male, 2 = female)
  * @param {number} year - The year to search in
+ * @param {boolean} groupSimilar - Whether to group similar names
  * @returns {Promise<Array>} Array of matching records
  */
-export async function getDataByNameSexYear(name, sex, year) {
+export async function getDataByNameSexYear(name, sex, year, groupSimilar = false) {
   await ensureDatabase();
   
   try {
+    let whereClause = groupSimilar 
+      ? `UPPER(prenom_normalized) = UPPER('${name.toLowerCase()}')`
+      : `UPPER(prenom) = UPPER('${name}')`;
+    
     const result = await conn.query(`
       SELECT prenom, valeur, sexe, periode 
       FROM prenoms
-      WHERE UPPER(prenom) = UPPER('${name}') AND sexe = ${sex} AND periode = ${year}
+      WHERE ${whereClause} AND sexe = ${sex} AND periode = ${year}
     `);
     
     return result.toArray().map(row => ({
@@ -179,16 +191,21 @@ export async function getDataByNameSexYear(name, sex, year) {
 /**
  * Get data for a specific name across all years and sexes
  * @param {string} name - The name to search for
+ * @param {boolean} groupSimilar - Whether to group similar names
  * @returns {Promise<Array>} Array of records for the name
  */
-export async function getDataByName(name) {
+export async function getDataByName(name, groupSimilar = false) {
   await ensureDatabase();
   
   try {
+    let whereClause = groupSimilar 
+      ? `UPPER(prenom_normalized) = UPPER('${name.toLowerCase()}')`
+      : `UPPER(prenom) = UPPER('${name}')`;
+    
     const result = await conn.query(`
       SELECT prenom, valeur, sexe, periode 
       FROM prenoms
-      WHERE UPPER(prenom) = UPPER('${name}')
+      WHERE ${whereClause}
       ORDER BY periode ASC, sexe
     `);
     
@@ -208,17 +225,29 @@ export async function getDataByName(name) {
 /**
  * Get data for multiple names for comparison
  * @param {Array<string>} names - Array of names to compare
+ * @param {boolean} groupSimilar - Whether to group similar names
  * @returns {Promise<Array>} Array of records for all names
  */
-export async function getDataByNames(names) {
+export async function getDataByNames(names, groupSimilar = false) {
   await ensureDatabase();
   
   try {
-    const namesList = names.map(name => `'${name.toUpperCase()}'`).join(',');
+    let namesList, whereClause;
+    
+    if (groupSimilar) {
+      const normalizedNames = names.map(name => `'${name.toLowerCase()}'`);
+      namesList = normalizedNames.join(',');
+      whereClause = `UPPER(prenom_normalized) IN (${namesList})`;
+    } else {
+      const upperNames = names.map(name => `'${name.toUpperCase()}'`);
+      namesList = upperNames.join(',');
+      whereClause = `UPPER(prenom) IN (${namesList})`;
+    }
+    
     const result = await conn.query(`
       SELECT prenom, valeur, sexe, periode 
       FROM prenoms
-      WHERE UPPER(prenom) IN (${namesList})
+      WHERE ${whereClause}
       ORDER BY prenom, periode ASC, sexe
     `);
     
@@ -261,14 +290,20 @@ export async function getAvailableYears() {
  * @param {number} year - Year to search in (optional)
  * @param {number} sex - Sex filter (optional)
  * @param {number} limit - Maximum number of results
+ * @param {boolean} groupSimilar - Whether to group similar names
  * @returns {Promise<Array>} Array of matching names
  */
-export async function searchNamesByPattern(pattern, year = null, sex = null, limit = 20) {
+export async function searchNamesByPattern(pattern, year = null, sex = null, limit = 20, groupSimilar = false) {
   await ensureDatabase();
   
   try {
+    let groupByClause = groupSimilar ? 'prenom_normalized' : 'prenom';
+    let selectClause = groupSimilar 
+      ? 'prenom_normalized as prenom, SUM(valeur) as total_valeur'
+      : 'prenom, SUM(valeur) as total_valeur';
+    
     let query = `
-      SELECT DISTINCT prenom, SUM(valeur) as total_valeur
+      SELECT ${selectClause}
       FROM prenoms
       WHERE UPPER(prenom) LIKE UPPER('%${pattern}%')
     `;
@@ -281,7 +316,7 @@ export async function searchNamesByPattern(pattern, year = null, sex = null, lim
       query += ` AND sexe = ${sex}`;
     }
     
-    query += ` GROUP BY prenom ORDER BY total_valeur DESC LIMIT ${limit}`;
+    query += ` GROUP BY ${groupByClause} ORDER BY total_valeur DESC LIMIT ${limit}`;
     
     const result = await conn.query(query);
     return result.toArray().map(row => ({
@@ -293,17 +328,18 @@ export async function searchNamesByPattern(pattern, year = null, sex = null, lim
     console.error("Error searching names by pattern:", err);
     throw err;
   }
-} 
+}
 
 /**
- * Get data for a specific sex and year with ranking comparisons (1, 5, and 10 years)
+ * Get data for a specific sex and year with ranking and optional grouping
  * @param {number} sex - Sex (1 = male, 2 = female)
- * @param {number} year - The year to get data for
- * @param {number} offset - Pagination offset
- * @param {number} limit - Pagination limit
- * @returns {Promise<Object>} Object with data array and total count
+ * @param {number} year - The year to search in
+ * @param {number} offset - Offset for pagination
+ * @param {number} limit - Number of results per page
+ * @param {boolean} groupSimilar - Whether to group similar names
+ * @returns {Promise<{data: Array, total: number}>} Array of matching records and total count
  */
-export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit = 50) {
+export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit = 50, groupSimilar = false) {
   await ensureDatabase();
   
   try {
@@ -311,9 +347,14 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
     const fiveYearsAgo = year - 5;
     const tenYearsAgo = year - 10;
     
+    let groupByClause = groupSimilar ? 'prenom_normalized' : 'prenom';
+    let selectClause = groupSimilar 
+      ? 'prenom_normalized as prenom, SUM(valeur) as valeur, sexe, periode'
+      : 'prenom, valeur, sexe, periode';
+    
     // Get total count
     const countResult = await conn.query(`
-      SELECT COUNT(*) as total
+      SELECT COUNT(DISTINCT ${groupByClause}) as total
       FROM prenoms
       WHERE sexe = ${sex} AND periode = ${year}
     `);
@@ -323,34 +364,35 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
     const result = await conn.query(`
       WITH current_year AS (
         SELECT 
-          prenom, 
-          valeur, 
-          sexe, 
-          periode,
-          ROW_NUMBER() OVER (ORDER BY valeur DESC) as current_rank
+          ${selectClause},
+          ROW_NUMBER() OVER (ORDER BY ${groupSimilar ? 'SUM(valeur)' : 'valeur'} DESC) as current_rank
         FROM prenoms
         WHERE sexe = ${sex} AND periode = ${year}
+        ${groupSimilar ? `GROUP BY ${groupByClause}, sexe, periode` : ''}
       ),
       previous_year AS (
         SELECT 
-          prenom, 
-          ROW_NUMBER() OVER (ORDER BY valeur DESC) as previous_rank
+          ${groupByClause} as prenom,
+          ROW_NUMBER() OVER (ORDER BY ${groupSimilar ? 'SUM(valeur)' : 'valeur'} DESC) as previous_rank
         FROM prenoms
         WHERE sexe = ${sex} AND periode = ${previousYear}
+        ${groupSimilar ? `GROUP BY ${groupByClause}` : ''}
       ),
       five_years_ago AS (
         SELECT 
-          prenom, 
-          ROW_NUMBER() OVER (ORDER BY valeur DESC) as five_years_rank
+          ${groupByClause} as prenom,
+          ROW_NUMBER() OVER (ORDER BY ${groupSimilar ? 'SUM(valeur)' : 'valeur'} DESC) as five_years_rank
         FROM prenoms
         WHERE sexe = ${sex} AND periode = ${fiveYearsAgo}
+        ${groupSimilar ? `GROUP BY ${groupByClause}` : ''}
       ),
       ten_years_ago AS (
         SELECT 
-          prenom, 
-          ROW_NUMBER() OVER (ORDER BY valeur DESC) as ten_years_rank
+          ${groupByClause} as prenom,
+          ROW_NUMBER() OVER (ORDER BY ${groupSimilar ? 'SUM(valeur)' : 'valeur'} DESC) as ten_years_rank
         FROM prenoms
         WHERE sexe = ${sex} AND periode = ${tenYearsAgo}
+        ${groupSimilar ? `GROUP BY ${groupByClause}` : ''}
       )
       SELECT 
         c.prenom,
@@ -369,7 +411,7 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
       LIMIT ${limit} OFFSET ${offset}
     `);
     
-    const data = result.toArray().map(row => ({
+    let data = result.toArray().map(row => ({
       ...row,
       prenom: formatName(row.prenom),
       valeur: Number(row.valeur),
@@ -380,6 +422,58 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
       five_years_rank: row.five_years_rank ? Number(row.five_years_rank) : null,
       ten_years_rank: row.ten_years_rank ? Number(row.ten_years_rank) : null
     }));
+
+    // If grouping is enabled, get the variations for each normalized name
+    if (groupSimilar) {
+      const variationsData = await conn.query(`
+        SELECT 
+          prenom_normalized,
+          prenom,
+          valeur,
+          ROW_NUMBER() OVER (PARTITION BY prenom_normalized ORDER BY valeur DESC) as freq_rank
+        FROM prenoms
+        WHERE sexe = ${sex} AND periode = ${year}
+        ORDER BY prenom_normalized, valeur DESC
+      `);
+      
+      const variationsMap = {};
+      variationsData.toArray().forEach(row => {
+        const normalized = row.prenom_normalized;
+        if (!variationsMap[normalized]) {
+          variationsMap[normalized] = [];
+        }
+        variationsMap[normalized].push({
+          name: row.prenom,
+          value: Number(row.valeur),
+          rank: Number(row.freq_rank)
+        });
+      });
+
+      // Update the data to include variations
+      data = data.map(item => {
+        const normalized = item.prenom.toLowerCase();
+        const variations = variationsMap[normalized] || [];
+        
+        if (variations.length > 1) {
+          // Sort by frequency (most popular first) and join with "/"
+          const sortedVariations = variations
+            .sort((a, b) => b.value - a.value)
+            .map(v => formatName(v.name));
+          
+          return {
+            ...item,
+            prenom: sortedVariations.join(' / ')
+          };
+        } else if (variations.length === 1) {
+          // If only one variation, use the original name
+          return {
+            ...item,
+            prenom: formatName(variations[0].name)
+          };
+        }
+        return item;
+      });
+    }
     
     return { data, total };
   } catch (err) {

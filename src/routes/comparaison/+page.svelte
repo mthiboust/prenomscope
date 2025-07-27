@@ -5,6 +5,7 @@
 
   let nameInput = '';
   let selectedNames = [];
+  let groupSimilar = false; // New toggle for grouping similar names
   let data = [];
   let suggestions = [];
   let loading = false;
@@ -14,13 +15,14 @@
 
   $: comparisonStats = calculateComparisonStats(data);
   $: hasData = selectedNames.length > 0 && data.length > 0;
-  $: if (selectedNames) saveState(); // Save state whenever selectedNames changes
+  $: if (selectedNames || groupSimilar) saveState(); // Save state whenever selectedNames or groupSimilar changes
 
   // State persistence functions
   function saveState() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('prenomscope-comparaison-state', JSON.stringify({
-        selectedNames
+        selectedNames,
+        groupSimilar
       }));
     }
   }
@@ -32,6 +34,7 @@
         try {
           const state = JSON.parse(saved);
           selectedNames = state.selectedNames || [];
+          groupSimilar = state.groupSimilar || false;
         } catch (err) {
           console.error('Error loading saved state:', err);
         }
@@ -142,7 +145,7 @@
     error = null;
 
     try {
-      data = await getDataByNames(selectedNames);
+      data = await getDataByNames(selectedNames, groupSimilar);
       
       // Check if some names have no data
       const namesWithData = [...new Set(data.map(d => d.prenom))];
@@ -167,7 +170,7 @@
     if (nameInput.length >= 2) {
       suggestionTimeout = setTimeout(async () => {
         try {
-          suggestions = await searchNamesByPattern(nameInput);
+          suggestions = await searchNamesByPattern(nameInput, null, null, 20, groupSimilar);
           // Filter out already selected names
           suggestions = suggestions.filter(s => 
             !selectedNames.some(name => name.toLowerCase() === s.prenom.toLowerCase())
@@ -188,6 +191,12 @@
     nameInput = name;
     showSuggestions = false;
     addName();
+  }
+
+  function handleGroupSimilarChange() {
+    if (selectedNames.length > 0) {
+      loadComparisonData();
+    }
   }
 
   function formatNumber(num) {
@@ -233,6 +242,21 @@
         <button class="btn" on:click={addName} disabled={!nameInput.trim()}>
           Ajouter
         </button>
+      </div>
+
+      <div class="grouping-toggle">
+        <label for="group-similar-comparaison" class="checkbox-label">
+          <input 
+            type="checkbox" 
+            id="group-similar-comparaison"
+            bind:checked={groupSimilar}
+            on:change={handleGroupSimilarChange}
+          />
+          <span class="checkbox-text">
+            <strong>🔗 Grouper les prénoms similaires</strong>
+            <small>Combine les variantes avec/sans accents (ex: Émilie/Emilie)</small>
+          </span>
+        </label>
       </div>
 
       {#if showSuggestions && suggestions.length > 0}

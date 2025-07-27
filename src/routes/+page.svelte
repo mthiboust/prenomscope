@@ -6,6 +6,7 @@
   let years = [];
   let selectedYear = 2024;
   let selectedSex = 1; // 1 = male, 2 = female
+  let groupSimilar = false; // New toggle for grouping similar names
   let currentPage = 1;
   let itemsPerPage = 50;
   let data = [];
@@ -16,7 +17,7 @@
 
   $: totalPages = Math.ceil(totalItems / itemsPerPage);
   $: sexLabel = selectedSex === 1 ? 'masculins' : 'féminins';
-  $: if (isInitialized && (selectedYear || selectedSex || currentPage)) saveState(); // Only save after initialization
+  $: if (isInitialized && (selectedYear || selectedSex || currentPage || groupSimilar)) saveState(); // Only save after initialization
   $: if (data.length > 0 && totalItems > 0) {
     // Ensure current page is valid after data loads
     if (currentPage > totalPages && totalPages > 0) {
@@ -31,7 +32,8 @@
       const state = {
         selectedYear,
         selectedSex,
-        currentPage
+        currentPage,
+        groupSimilar
       };
       console.log('Saving state:', state);
       localStorage.setItem('prenomscope-state', JSON.stringify(state));
@@ -49,7 +51,8 @@
           selectedYear = state.selectedYear || 2024;
           selectedSex = state.selectedSex || 1;
           currentPage = state.currentPage || 1;
-          console.log('State loaded - selectedYear:', selectedYear, 'selectedSex:', selectedSex, 'currentPage:', currentPage);
+          groupSimilar = state.groupSimilar || false;
+          console.log('State loaded - selectedYear:', selectedYear, 'selectedSex:', selectedSex, 'currentPage:', currentPage, 'groupSimilar:', groupSimilar);
         } catch (err) {
           console.error('Error loading saved state:', err);
         }
@@ -94,7 +97,7 @@
     
     try {
       const offset = (currentPage - 1) * itemsPerPage;
-      const result = await getDataBySexYearWithRanking(selectedSex, selectedYear, offset, itemsPerPage);
+      const result = await getDataBySexYearWithRanking(selectedSex, selectedYear, offset, itemsPerPage, groupSimilar);
       data = result.data;
       totalItems = result.total;
     } catch (err) {
@@ -113,6 +116,12 @@
   }
 
   function handleSexChange() {
+    currentPage = 1;
+    saveState();
+    loadData();
+  }
+
+  function handleGroupSimilarChange() {
     currentPage = 1;
     saveState();
     loadData();
@@ -199,6 +208,21 @@
         <option value={1}>👦 Prénoms masculins</option>
         <option value={2}>👧 Prénoms féminins</option>
       </select>
+    </div>
+
+    <div class="filter-group">
+      <label for="group-similar" class="checkbox-label">
+        <input 
+          type="checkbox" 
+          id="group-similar"
+          bind:checked={groupSimilar}
+          on:change={handleGroupSimilarChange}
+        />
+        <span class="checkbox-text">
+          <strong>🔗 Grouper les prénoms similaires</strong>
+          <small>Combine les variantes avec/sans accents (ex: Émilie/Emilie)</small>
+        </span>
+      </label>
     </div>
   </div>
 
@@ -486,6 +510,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
+    min-height: 2.5rem;
+    line-height: 1.2;
   }
 
   .name-link {
@@ -493,6 +520,9 @@
     text-decoration: none;
     font-weight: 500;
     transition: color 0.2s ease;
+    text-align: center;
+    word-break: break-word;
+    hyphens: auto;
   }
 
   .name-link:hover {
@@ -582,6 +612,26 @@
     text-align: center;
     color: #64748b;
     font-style: italic;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: #374151;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 1.25rem;
+    height: 1.25rem;
+    accent-color: #3b82f6; /* Customize checkbox color */
+  }
+
+  .checkbox-text {
+    font-size: 0.9rem;
+    color: #64748b;
   }
 
   @media (max-width: 768px) {

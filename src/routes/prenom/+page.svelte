@@ -6,6 +6,7 @@
 
   let nameQuery = '';
   let selectedName = '';
+  let groupSimilar = false; // New toggle for grouping similar names
   let data = [];
   let suggestions = [];
   let loading = false;
@@ -14,14 +15,15 @@
   let suggestionTimeout;
 
   $: stats = calculateStats(data);
-  $: if (nameQuery || selectedName) saveState(); // Save state when relevant variables change
+  $: if (nameQuery || selectedName || groupSimilar) saveState(); // Save state when relevant variables change
 
   // State persistence functions
   function saveState() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('prenomscope-prenom-state', JSON.stringify({
         nameQuery,
-        selectedName
+        selectedName,
+        groupSimilar
       }));
     }
   }
@@ -34,6 +36,7 @@
           const state = JSON.parse(saved);
           nameQuery = state.nameQuery || '';
           selectedName = state.selectedName || '';
+          groupSimilar = state.groupSimilar || false;
         } catch (err) {
           console.error('Error loading saved state:', err);
         }
@@ -96,7 +99,7 @@
     error = null;
     
     try {
-      data = await getDataByName(name.trim());
+      data = await getDataByName(name.trim(), groupSimilar);
       selectedName = name.trim();
       saveState();
       
@@ -124,7 +127,7 @@
     if (nameQuery.length >= 2) {
       suggestionTimeout = setTimeout(async () => {
         try {
-          suggestions = await searchNamesByPattern(nameQuery);
+          suggestions = await searchNamesByPattern(nameQuery, null, null, 20, groupSimilar);
           showSuggestions = suggestions.length > 0;
         } catch (err) {
           suggestions = [];
@@ -141,6 +144,12 @@
     nameQuery = name;
     loadNameData(name);
     showSuggestions = false;
+  }
+
+  function handleGroupSimilarChange() {
+    if (selectedName) {
+      loadNameData(selectedName);
+    }
   }
 
   function formatNumber(num) {
@@ -183,6 +192,21 @@
         <button class="btn" on:click={handleSearch} disabled={!nameQuery.trim()}>
           Analyser
         </button>
+      </div>
+
+      <div class="grouping-toggle">
+        <label for="group-similar-prenom" class="checkbox-label">
+          <input 
+            type="checkbox" 
+            id="group-similar-prenom"
+            bind:checked={groupSimilar}
+            on:change={handleGroupSimilarChange}
+          />
+          <span class="checkbox-text">
+            <strong>🔗 Grouper les prénoms similaires</strong>
+            <small>Combine les variantes avec/sans accents (ex: Émilie/Emilie)</small>
+          </span>
+        </label>
       </div>
 
       {#if showSuggestions && suggestions.length > 0}
