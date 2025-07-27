@@ -86,10 +86,16 @@ async function ensureDatabase() {
 
 /**
  * Format name for display (proper case)
+ * Capitalizes first letter and letters following a dash
  */
 export function formatName(name) {
   if (!name) return '';
-  return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
+  
+  // Split by dash, capitalize each part, then join back
+  return name.split('-').map(part => {
+    if (!part) return part; // Handle empty parts (e.g., "Jean--Pierre")
+    return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+  }).join('-');
 }
 
 // ========================================
