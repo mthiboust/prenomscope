@@ -1,4 +1,5 @@
 <script>
+  import { onMount } from 'svelte';
   import { getDataByNames, searchNamesByPattern } from '$lib/data.js';
   import Chart from '$lib/components/Chart.svelte';
 
@@ -13,6 +14,40 @@
 
   $: comparisonStats = calculateComparisonStats(data);
   $: hasData = selectedNames.length > 0 && data.length > 0;
+  $: if (selectedNames) saveState(); // Save state whenever selectedNames changes
+
+  // State persistence functions
+  function saveState() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('prenomscope-comparaison-state', JSON.stringify({
+        selectedNames
+      }));
+    }
+  }
+
+  function loadState() {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('prenomscope-comparaison-state');
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          selectedNames = state.selectedNames || [];
+        } catch (err) {
+          console.error('Error loading saved state:', err);
+        }
+      }
+    }
+  }
+
+  onMount(async () => {
+    // Load saved state first
+    loadState();
+    
+    // If we have saved names, load the comparison data
+    if (selectedNames.length > 0) {
+      await loadComparisonData();
+    }
+  });
 
   function calculateComparisonStats(data) {
     if (!data.length) return [];
@@ -77,6 +112,7 @@
     error = null;
 
     await loadComparisonData();
+    saveState(); // Save state after adding a name
   }
 
   function removeName(name) {
@@ -86,12 +122,14 @@
     } else {
       data = [];
     }
+    saveState(); // Save state after removing a name
   }
 
   function clearAll() {
     selectedNames = [];
     data = [];
     error = null;
+    saveState(); // Save state after clearing all
   }
 
   async function loadComparisonData() {

@@ -12,6 +12,15 @@ const config = {
 		}),
 		paths: {
 			base: process.env.NODE_ENV === 'production' ? '/prenomscope' : '/prenomscope'
+		},
+		prerender: {
+			handleHttpError: ({ path, referrer, message }) => {
+				// ignore missing links
+				if (message.includes('Not found')) {
+					return;
+				}
+				throw new Error(message);
+			}
 		}
 	}
 };

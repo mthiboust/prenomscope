@@ -14,14 +14,46 @@
   let suggestionTimeout;
 
   $: stats = calculateStats(data);
+  $: if (nameQuery || selectedName) saveState(); // Save state when relevant variables change
+
+  // State persistence functions
+  function saveState() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('prenomscope-prenom-state', JSON.stringify({
+        nameQuery,
+        selectedName
+      }));
+    }
+  }
+
+  function loadState() {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('prenomscope-prenom-state');
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          nameQuery = state.nameQuery || '';
+          selectedName = state.selectedName || '';
+        } catch (err) {
+          console.error('Error loading saved state:', err);
+        }
+      }
+    }
+  }
 
   onMount(() => {
-    // Check if name is provided in URL query
+    // Load saved state first
+    loadState();
+    
+    // Check if name is provided in URL query (takes precedence)
     const urlName = $page.url.searchParams.get('nom');
     if (urlName) {
       nameQuery = urlName;
       selectedName = urlName;
       loadNameData(urlName);
+    } else if (selectedName) {
+      // If no URL param but we have saved state, load the saved name
+      loadNameData(selectedName);
     }
   });
 
@@ -66,6 +98,7 @@
     try {
       data = await getDataByName(name.trim());
       selectedName = name.trim();
+      saveState();
       
       if (data.length === 0) {
         error = `Aucune donnée trouvée pour le prénom "${name}". Vérifiez l'orthographe ou essayez une variante.`;

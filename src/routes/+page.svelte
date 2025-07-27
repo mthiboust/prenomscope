@@ -1,5 +1,6 @@
 <script>
   import { onMount } from 'svelte';
+  import { base } from '$app/paths';
   import { getDataBySexYearWithRanking, getAvailableYears } from '$lib/data.js';
 
   let years = [];
@@ -11,17 +12,79 @@
   let totalItems = 0;
   let loading = false;
   let error = null;
+  let isInitialized = false; // Track if the component has been initialized
 
   $: totalPages = Math.ceil(totalItems / itemsPerPage);
   $: sexLabel = selectedSex === 1 ? 'masculins' : 'féminins';
+  $: if (isInitialized && (selectedYear || selectedSex || currentPage)) saveState(); // Only save after initialization
+  $: if (data.length > 0 && totalItems > 0) {
+    // Ensure current page is valid after data loads
+    if (currentPage > totalPages && totalPages > 0) {
+      currentPage = totalPages;
+      if (isInitialized) saveState();
+    }
+  }
+
+  // State persistence functions
+  function saveState() {
+    if (typeof window !== 'undefined') {
+      const state = {
+        selectedYear,
+        selectedSex,
+        currentPage
+      };
+      console.log('Saving state:', state);
+      localStorage.setItem('prenomscope-state', JSON.stringify(state));
+    }
+  }
+
+  function loadState() {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('prenomscope-state');
+      console.log('Attempting to load state, saved data:', saved);
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          console.log('Loading saved state:', state);
+          selectedYear = state.selectedYear || 2024;
+          selectedSex = state.selectedSex || 1;
+          currentPage = state.currentPage || 1;
+          console.log('State loaded - selectedYear:', selectedYear, 'selectedSex:', selectedSex, 'currentPage:', currentPage);
+        } catch (err) {
+          console.error('Error loading saved state:', err);
+        }
+      } else {
+        console.log('No saved state found, using defaults');
+      }
+    }
+  }
 
   onMount(async () => {
     try {
+      // Load saved state first
+      loadState();
+      
       years = await getAvailableYears();
-      selectedYear = years[0] || 2024;
+      
+      // Only override selectedYear if it's not in the available years
+      if (!years.includes(selectedYear)) {
+        selectedYear = years[0] || 2024;
+        saveState(); // Save the corrected year
+      }
+      
+      // Load data first to get total items
       await loadData();
+      
+      // After loading data, validate and adjust current page if needed
+      if (currentPage > totalPages && totalPages > 0) {
+        currentPage = totalPages;
+        saveState();
+      }
+      
+      isInitialized = true; // Mark as initialized after successful mount
     } catch (err) {
       error = err.message;
+      isInitialized = true; // Mark as initialized even on error
     }
   });
 
@@ -45,17 +108,20 @@
 
   function handleYearChange() {
     currentPage = 1;
+    saveState();
     loadData();
   }
 
   function handleSexChange() {
     currentPage = 1;
+    saveState();
     loadData();
   }
 
   function goToPage(page) {
     if (page >= 1 && page <= totalPages) {
       currentPage = page;
+      saveState();
       loadData();
     }
   }
@@ -195,7 +261,7 @@
               </div>
             </div>
             <div class="name">
-              <a href="prenom?nom={encodeURIComponent(item.prenom)}" class="name-link">
+              <a href="{base}/prenom?nom={encodeURIComponent(item.prenom)}" class="name-link">
                 {item.prenom}
               </a>
             </div>
