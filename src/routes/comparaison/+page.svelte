@@ -245,18 +245,18 @@
       </div>
 
       <div class="grouping-toggle">
-        <label for="group-similar-comparaison" class="checkbox-label">
-          <input 
-            type="checkbox" 
-            id="group-similar-comparaison"
-            bind:checked={groupSimilar}
-            on:change={handleGroupSimilarChange}
-          />
-          <span class="checkbox-text">
-            <strong>🔗 Grouper les prénoms similaires</strong>
-            <small>Combine les variantes avec/sans accents (ex: Émilie/Emilie)</small>
-          </span>
+        <label for="group-similar-comparaison">
+          <strong>🔗 Variantes</strong>
         </label>
+        <select 
+          id="group-similar-comparaison"
+          class="select"
+          bind:value={groupSimilar}
+          on:change={handleGroupSimilarChange}
+        >
+          <option value={false}>Orthographe exacte</option>
+          <option value={true}>Sonorité similaire</option>
+        </select>
       </div>
 
       {#if showSuggestions && suggestions.length > 0}

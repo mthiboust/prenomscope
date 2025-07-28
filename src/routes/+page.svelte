@@ -6,7 +6,7 @@
   let years = [];
   let selectedYear = 2024;
   let selectedSex = 1; // 1 = male, 2 = female
-  let groupSimilar = false; // New toggle for grouping similar names
+  let groupSimilar = false; // false = exact spelling, true = similar sound
   let currentPage = 1;
   let itemsPerPage = 50;
   let data = [];
@@ -211,18 +211,18 @@
     </div>
 
     <div class="filter-group">
-      <label for="group-similar" class="checkbox-label">
-        <input 
-          type="checkbox" 
-          id="group-similar"
-          bind:checked={groupSimilar}
-          on:change={handleGroupSimilarChange}
-        />
-        <span class="checkbox-text">
-          <strong>🔗 Grouper les prénoms similaires</strong>
-          <small>Combine les variantes avec/sans accents (ex: Émilie/Emilie)</small>
-        </span>
+      <label for="group-similar">
+        <strong>🔗 Variantes</strong>
       </label>
+      <select 
+        id="group-similar"
+        class="select"
+        bind:value={groupSimilar}
+        on:change={handleGroupSimilarChange}
+      >
+        <option value={false}>Orthographe exacte</option>
+        <option value={true}>Sonorité similaire</option>
+      </select>
     </div>
   </div>
 

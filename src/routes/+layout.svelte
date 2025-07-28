@@ -265,45 +265,11 @@
     margin: 1rem 0;
   }
 
-  /* Grouping toggle styles */
+  /* Grouping toggle styles for other pages */
   :global(.grouping-toggle) {
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px solid #e2e8f0;
   }
 
-  :global(.checkbox-label) {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    cursor: pointer;
-    font-size: 0.9rem;
-    color: #374151;
-    line-height: 1.4;
-  }
-
-  :global(.checkbox-label input[type="checkbox"]) {
-    width: 1.25rem;
-    height: 1.25rem;
-    accent-color: #3b82f6;
-    margin-top: 0.125rem;
-    flex-shrink: 0;
-  }
-
-  :global(.checkbox-text) {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  :global(.checkbox-text strong) {
-    color: #1f2937;
-    font-weight: 600;
-  }
-
-  :global(.checkbox-text small) {
-    color: #6b7280;
-    font-size: 0.8rem;
-    line-height: 1.3;
-  }
 </style> 
