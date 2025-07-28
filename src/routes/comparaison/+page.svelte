@@ -145,18 +145,34 @@
     error = null;
 
     try {
+      console.log('Loading comparison data for names:', selectedNames, 'groupSimilar:', groupSimilar);
       data = await getDataByNames(selectedNames, groupSimilar);
+      console.log('Loaded data:', data);
       
       // Check if some names have no data
       const namesWithData = [...new Set(data.map(d => d.prenom))];
-      const missingNames = selectedNames.filter(name => 
-        !namesWithData.some(dataName => dataName.toLowerCase() === name.toLowerCase())
-      );
+      console.log('Names with data:', namesWithData);
+      
+      // When groupSimilar is true, we need to check differently since the data contains normalized names
+      let missingNames = [];
+      if (groupSimilar) {
+        // For similar sound, we check if any of the input names have data
+        // The data contains normalized names, so we need to check if any data was found
+        if (data.length === 0) {
+          missingNames = selectedNames;
+        }
+      } else {
+        // For exact spelling, check if each input name has data
+        missingNames = selectedNames.filter(name => 
+          !namesWithData.some(dataName => dataName.toLowerCase() === name.toLowerCase())
+        );
+      }
       
       if (missingNames.length > 0) {
         error = `Aucune donnée trouvée pour : ${missingNames.join(', ')}`;
       }
     } catch (err) {
+      console.error('Error loading comparison data:', err);
       error = err.message;
       data = [];
     } finally {
@@ -390,7 +406,7 @@
       <div class="example-names">
         <p><strong>💡 Suggestions pour commencer :</strong></p>
         <div class="example-buttons">
-          {#each ['Marie', 'Pierre', 'Camille', 'Alex'] as exampleName}
+          {#each ['Marie', 'Pierre', 'Camille', 'Alex', 'Mathew', 'Matthew'] as exampleName}
             <button 
               class="btn btn-secondary" 
               on:click={() => {nameInput = exampleName; addName();}}

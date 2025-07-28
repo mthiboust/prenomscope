@@ -232,32 +232,118 @@ export async function getDataByNames(names, groupSimilar = false) {
   await ensureDatabase();
   
   try {
-    let namesList, whereClause;
+    let query;
     
     if (groupSimilar) {
-      const normalizedNames = names.map(name => `'${name.toLowerCase()}'`);
-      namesList = normalizedNames.join(',');
-      whereClause = `UPPER(prenom_normalized) IN (${namesList})`;
-    } else {
+      // For similar sound, we need to find names that match the normalized versions
+      // We'll use a subquery to find the normalized versions first
       const upperNames = names.map(name => `'${name.toUpperCase()}'`);
-      namesList = upperNames.join(',');
-      whereClause = `UPPER(prenom) IN (${namesList})`;
+      const namesList = upperNames.join(',');
+      
+      query = `
+        WITH target_normalized AS (
+          SELECT DISTINCT prenom_normalized
+          FROM prenoms
+          WHERE prenom IN (${namesList})
+        )
+        SELECT 
+          p.prenom_normalized as prenom,
+          SUM(p.valeur) as valeur,
+          p.sexe,
+          p.periode
+        FROM prenoms p
+        INNER JOIN target_normalized tn ON p.prenom_normalized = tn.prenom_normalized
+        GROUP BY p.prenom_normalized, p.sexe, p.periode
+        ORDER BY p.prenom_normalized, p.periode ASC, p.sexe
+      `;
+    } else {
+      // For exact spelling, use the original names
+      const upperNames = names.map(name => `'${name.toUpperCase()}'`);
+      const namesList = upperNames.join(',');
+      
+      query = `
+        SELECT prenom, valeur, sexe, periode 
+        FROM prenoms
+        WHERE prenom IN (${namesList})
+        ORDER BY prenom, periode ASC, sexe
+      `;
     }
     
-    const result = await conn.query(`
-      SELECT prenom, valeur, sexe, periode 
-      FROM prenoms
-      WHERE ${whereClause}
-      ORDER BY prenom, periode ASC, sexe
-    `);
+    console.log('getDataByNames query:', query);
+    console.log('getDataByNames names:', names);
+    console.log('getDataByNames groupSimilar:', groupSimilar);
     
-    return result.toArray().map(row => ({
+    const result = await conn.query(query);
+    console.log('getDataByNames raw result:', result.toString());
+    
+    let data = result.toArray().map(row => ({
       ...row,
       prenom: formatName(row.prenom),
       valeur: Number(row.valeur),
       sexe: Number(row.sexe),
       periode: Number(row.periode)
     }));
+    
+    // If grouping is enabled, get the variations for each normalized name
+    if (groupSimilar) {
+      // Get all variations for the normalized names we found
+      const normalizedNames = [...new Set(data.map(item => item.prenom.toLowerCase()))];
+      const normalizedNamesList = normalizedNames.map(name => `'${name}'`).join(',');
+      
+      if (normalizedNamesList) {
+        const variationsData = await conn.query(`
+          SELECT 
+            prenom_normalized,
+            prenom,
+            sexe,
+            COUNT(*) as count
+          FROM prenoms
+          WHERE prenom_normalized IN (${normalizedNamesList})
+          GROUP BY prenom_normalized, prenom, sexe
+          ORDER BY prenom_normalized, sexe, count DESC
+        `);
+        
+        const variationsMap = {};
+        variationsData.toArray().forEach(row => {
+          const key = `${row.prenom_normalized}_${row.sexe}`;
+          if (!variationsMap[key]) {
+            variationsMap[key] = [];
+          }
+          variationsMap[key].push({
+            name: row.prenom,
+            count: Number(row.count)
+          });
+        });
+
+        // Update the data to include variations
+        data = data.map(item => {
+          const key = `${item.prenom.toLowerCase()}_${item.sexe}`;
+          const variations = variationsMap[key] || [];
+          
+          if (variations.length > 1) {
+            // Sort by frequency (most popular first) and join with "/"
+            const sortedVariations = variations
+              .sort((a, b) => b.count - a.count)
+              .map(v => formatName(v.name));
+            
+            return {
+              ...item,
+              prenom: sortedVariations.join(' / ')
+            };
+          } else if (variations.length === 1) {
+            // If only one variation, use the original name
+            return {
+              ...item,
+              prenom: formatName(variations[0].name)
+            };
+          }
+          return item;
+        });
+      }
+    }
+    
+    console.log('getDataByNames result:', data);
+    return data;
   } catch (err) {
     console.error("Error getting data by names:", err);
     throw err;
