@@ -386,7 +386,7 @@
     display: grid;
     grid-template-columns: 80px 180px 1fr 120px;
     gap: 1rem;
-    padding: 1rem;
+    padding: 0.5rem 1rem;
     background: #f8fafc;
     border-radius: 8px 8px 0 0;
     font-weight: 600;
@@ -398,7 +398,7 @@
     display: grid;
     grid-template-columns: 80px 180px 1fr 120px;
     gap: 1rem;
-    padding: 0.75rem 1rem;
+    padding: 0.25rem 1rem;
     border-bottom: 1px solid #f1f5f9;
     transition: background-color 0.2s ease;
   }
