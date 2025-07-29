@@ -195,6 +195,20 @@
         <button class="btn" on:click={handleSearch} disabled={!nameQuery.trim()}>
           Analyser
         </button>
+
+        {#if showSuggestions && suggestions.length > 0}
+          <div class="suggestions">
+            {#each suggestions.slice(0, 8) as suggestion}
+              <button
+                class="suggestion-item"
+                on:click={() => selectSuggestion(suggestion.prenom)}
+              >
+                <span class="suggestion-name">{suggestion.prenom}</span>
+                <span class="suggestion-count">{formatNumber(suggestion.total_valeur)} naissances</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
       </div>
 
       <div class="grouping-toggle">
@@ -211,20 +225,6 @@
           <option value={true}>Sonorité similaire</option>
         </select>
       </div>
-
-      {#if showSuggestions && suggestions.length > 0}
-        <div class="suggestions">
-          {#each suggestions.slice(0, 8) as suggestion}
-            <button
-              class="suggestion-item"
-              on:click={() => selectSuggestion(suggestion.prenom)}
-            >
-              <span class="suggestion-name">{suggestion.prenom}</span>
-              <span class="suggestion-count">{formatNumber(suggestion.total_valeur)} naissances</span>
-            </button>
-          {/each}
-        </div>
-      {/if}
     </div>
   </div>
 
