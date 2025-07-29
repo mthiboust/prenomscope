@@ -33,4 +33,4 @@ For detailed methodology and definitions, visit the [official INSEE page](https:
 
 ## License
 
-This project is open source and available under the MIT License.
+This project is open source and available under the Apache License.
