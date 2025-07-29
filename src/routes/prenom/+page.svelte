@@ -187,10 +187,6 @@
 </svelte:head>
 
 <div class="page">
-  <header class="page-header">
-    <h1>📈 Statistiques détaillées</h1>
-    <p>Explorez l'évolution d'un prénom à travers les années</p>
-  </header>
 
   <div class="search-section card">
     <div class="search-container">
@@ -378,22 +374,7 @@
     margin: 0 auto;
   }
 
-  .page-header {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
 
-  .page-header h1 {
-    font-size: 2.5rem;
-    margin: 0 0 0.5rem 0;
-    color: #1e293b;
-  }
-
-  .page-header p {
-    font-size: 1.1rem;
-    color: #64748b;
-    margin: 0;
-  }
 
   .search-section {
     margin-bottom: 2rem;

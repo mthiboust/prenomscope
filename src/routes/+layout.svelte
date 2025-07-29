@@ -17,24 +17,26 @@
 <div class="app">
   <header>
     <nav>
-      <div class="nav-brand">
-        <h1>🎯 PrénomScope</h1>
-        <p>Statistiques des prénoms français - Données INSEE</p>
+      <div class="nav-content">
+        <div class="nav-brand">
+          <h1>👶 PrénomScope</h1>
+          <p>Statistiques des prénoms français - Données INSEE</p>
+        </div>
+        
+        <ul class="nav-links">
+          {#each navigation as item}
+            <li>
+              <a 
+                href={item.href}
+                class:active={item.href === base ? ($page.url.pathname.replace(/\/$/, '') === base) : ($page.url.pathname === item.href || $page.url.pathname.startsWith(item.href))}
+              >
+                <span class="icon">{item.icon}</span>
+                {item.label}
+              </a>
+            </li>
+          {/each}
+        </ul>
       </div>
-      
-      <ul class="nav-links">
-        {#each navigation as item}
-          <li>
-            <a 
-              href={item.href}
-              class:active={$page.url.pathname === item.href || ($page.url.pathname.startsWith(item.href) && item.href !== base)}
-            >
-              <span class="icon">{item.icon}</span>
-              {item.label}
-            </a>
-          </li>
-        {/each}
-      </ul>
     </nav>
   </header>
 
@@ -70,27 +72,33 @@
   }
 
   header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #475569;
     color: white;
     padding: 1.5rem 2rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   nav {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
   }
 
+  .nav-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+  }
+
   .nav-brand h1 {
-    margin: 0 0 0.5rem 0;
-    font-size: 2rem;
+    margin: 0 0 0.25rem 0;
+    font-size: 1.75rem;
     font-weight: 700;
   }
 
   .nav-brand p {
-    margin: 0 0 1.5rem 0;
+    margin: 0;
     opacity: 0.9;
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
 
   .nav-links {
@@ -100,29 +108,30 @@
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .nav-links a {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.75rem 1.25rem;
-    color: white;
+    padding: 0.5rem 1rem;
+    color: rgba(255, 255, 255, 0.8);
     text-decoration: none;
     border-radius: 8px;
     transition: all 0.2s ease;
     font-weight: 500;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
+    background: transparent;
   }
 
   .nav-links a:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
   }
 
   .nav-links a.active {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
@@ -132,9 +141,9 @@
 
   main {
     flex: 1;
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 1.5rem 2rem;
     width: 100%;
   }
 
@@ -156,20 +165,27 @@
       padding: 1rem;
     }
 
+    .nav-content {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
     .nav-brand h1 {
       font-size: 1.5rem;
     }
 
     .nav-brand p {
-      font-size: 1rem;
+      font-size: 0.9rem;
     }
 
     .nav-links {
-      justify-content: center;
+      justify-content: flex-start;
+      width: 100%;
     }
 
     .nav-links a {
-      padding: 0.5rem 1rem;
+      padding: 0.4rem 0.8rem;
       font-size: 0.9rem;
     }
 

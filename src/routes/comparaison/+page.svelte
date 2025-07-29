@@ -251,10 +251,6 @@
 </svelte:head>
 
 <div class="page">
-  <header class="page-header">
-    <h1>⚖️ Comparaison de prénoms</h1>
-    <p>Comparez l'évolution de plusieurs prénoms côte à côte</p>
-  </header>
 
   <div class="add-name-section card">
     <div class="add-name-container">
@@ -458,26 +454,11 @@
 
 <style>
   .page {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
   }
 
-  .page-header {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
 
-  .page-header h1 {
-    font-size: 2.5rem;
-    margin: 0 0 0.5rem 0;
-    color: #1e293b;
-  }
-
-  .page-header p {
-    font-size: 1.1rem;
-    color: #64748b;
-    margin: 0;
-  }
 
   .add-name-section {
     margin-bottom: 2rem;

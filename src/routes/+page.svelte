@@ -173,10 +173,6 @@
 </svelte:head>
 
 <div class="page">
-  <header class="page-header">
-    <h1>📊 Classements des prénoms</h1>
-    <p>Découvrez les prénoms les plus populaires par année et par sexe</p>
-  </header>
 
   <div class="filters card">
     <div class="filter-group">
@@ -362,26 +358,11 @@
 
 <style>
   .page {
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
   }
 
-  .page-header {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
 
-  .page-header h1 {
-    font-size: 2.5rem;
-    margin: 0 0 0.5rem 0;
-    color: #1e293b;
-  }
-
-  .page-header p {
-    font-size: 1.1rem;
-    color: #64748b;
-    margin: 0;
-  }
 
   .filters {
     display: grid;
