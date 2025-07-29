@@ -278,80 +278,78 @@
     <div class="results">
       <!-- Statistics Summary -->
       <div class="stats-summary card">
-        <h2>📊 Résumé pour "{selectedName}"</h2>
+        <h3>📊 Résumé pour "{selectedName}"</h3>
         
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-number">{formatNumber(stats.total)}</div>
-            <div class="stat-label">Naissances totales</div>
-          </div>
+        <div class="stats-table">
           
-          <div class="stat-card">
-            <div class="stat-number">{stats.years}</div>
-            <div class="stat-label">Années de données</div>
-          </div>
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th class="row-type"></th>
+                {#if selectedSex === null || selectedSex === 1}
+                  <th>👦 Garçons</th>
+                {/if}
+                {#if selectedSex === null || selectedSex === 2}
+                  <th>👧 Filles</th>
+                {/if}
+                {#if selectedSex === null}
+                  <th>👫 Total</th>
+                {/if}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="row-type">Période {stats.firstYear}-{stats.lastYear}</td>
+                {#if selectedSex === null || selectedSex === 1}
+                  <td>
+                    <div class="number-value">{formatNumber(stats.totalMale)}</div>
+                    {#if selectedSex === null}
+                      <div class="percentage-value">({formatPercentage(stats.totalMale, stats.total)})</div>
+                    {/if}
+                  </td>
+                {/if}
+                {#if selectedSex === null || selectedSex === 2}
+                  <td>
+                    <div class="number-value">{formatNumber(stats.totalFemale)}</div>
+                    {#if selectedSex === null}
+                      <div class="percentage-value">({formatPercentage(stats.totalFemale, stats.total)})</div>
+                    {/if}
+                  </td>
+                {/if}
+                {#if selectedSex === null}
+                  <td class="total-cell">
+                    <div class="number-value">{formatNumber(stats.total)}</div>
+                  </td>
+                {/if}
+              </tr>
+              {#if stats.malePeak || stats.femalePeak}
+                <tr class="peak-row">
+                  <td class="row-type">Maximum annuel</td>
+                  {#if selectedSex === null || selectedSex === 1}
+                    <td>
+                      {#if stats.malePeak}
+                        <div class="number-value">{formatNumber(stats.malePeak.valeur)}</div>
+                        <div class="percentage-value">in {stats.malePeak.periode}</div>
+                      {/if}
+                    </td>
+                  {/if}
+                  {#if selectedSex === null || selectedSex === 2}
+                    <td>
+                      {#if stats.femalePeak}
+                        <div class="number-value">{formatNumber(stats.femalePeak.valeur)}</div>
+                        <div class="percentage-value">in {stats.femalePeak.periode}</div>
+                      {/if}
+                    </td>
+                  {/if}
+                  {#if selectedSex === null}
+                    <td></td>
+                  {/if}
+                </tr>
+              {/if}
+            </tbody>
+          </table>
           
-          <div class="stat-card">
-            <div class="stat-number">{stats.firstYear} - {stats.lastYear}</div>
-            <div class="stat-label">Période</div>
-          </div>
-          
-          <div class="stat-card">
-            <div class="stat-number">
-              {stats.hasMale && stats.hasFemale ? '👫' : stats.hasMale ? '👦' : '👧'}
-            </div>
-            <div class="stat-label">
-              {stats.hasMale && stats.hasFemale ? 'Mixte' : stats.hasMale ? 'Masculin' : 'Féminin'}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Gender Breakdown -->
-      {#if stats.hasMale && stats.hasFemale}
-        <div class="gender-breakdown card">
-          <h3>⚖️ Répartition par sexe</h3>
-          
-          <div class="gender-stats">
-            <div class="gender-stat male">
-              <div class="gender-icon">👦</div>
-              <div class="gender-info">
-                <div class="gender-count">{formatNumber(stats.totalMale)}</div>
-                <div class="gender-label">Garçons ({formatPercentage(stats.totalMale, stats.total)})</div>
-              </div>
-            </div>
-            
-            <div class="gender-stat female">
-              <div class="gender-icon">👧</div>
-              <div class="gender-info">
-                <div class="gender-count">{formatNumber(stats.totalFemale)}</div>
-                <div class="gender-label">Filles ({formatPercentage(stats.totalFemale, stats.total)})</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      {/if}
-
-      <!-- Peak Years -->
-      <div class="peaks card">
-        <h3>🏆 Années de pic</h3>
-        
-        <div class="peaks-grid">
-          {#if stats.malePeak}
-            <div class="peak-card male">
-              <div class="peak-year">{stats.malePeak.periode}</div>
-              <div class="peak-count">{formatNumber(stats.malePeak.valeur)} garçons</div>
-              <div class="peak-label">Pic masculin</div>
-            </div>
-          {/if}
-          
-          {#if stats.femalePeak}
-            <div class="peak-card female">
-              <div class="peak-year">{stats.femalePeak.periode}</div>
-              <div class="peak-count">{formatNumber(stats.femalePeak.valeur)} filles</div>
-              <div class="peak-label">Pic féminin</div>
-            </div>
-          {/if}
         </div>
       </div>
 
@@ -360,7 +358,6 @@
         <h3>📈 Évolution dans le temps</h3>
         <Chart 
           data={data} 
-          title="Nombre de naissances par année"
           height={400}
         />
       </div>
@@ -464,128 +461,87 @@
     color: #64748b;
   }
 
-  .stats-summary h2 {
+  .stats-summary h3 {
     margin: 0 0 1.5rem 0;
     color: #1e293b;
   }
 
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
+  .stats-table {
+    margin-top: 1.5rem;
   }
 
-  .stat-card {
-    text-align: center;
-    padding: 1rem;
+  .table-header {
+    margin-bottom: 1rem;
+  }
+
+  .period-info {
+    font-size: 0.875rem;
+    color: #64748b;
+    font-style: italic;
+  }
+
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .summary-table th {
     background: #f8fafc;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-  }
-
-  .stat-number {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #3b82f6;
-    margin-bottom: 0.25rem;
-  }
-
-  .stat-label {
-    font-size: 0.875rem;
-    color: #64748b;
-    font-weight: 500;
-  }
-
-  .gender-breakdown h3 {
-    margin: 0 0 1rem 0;
-    color: #1e293b;
-  }
-
-  .gender-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-  }
-
-  .gender-stat {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 2px solid;
-  }
-
-  .gender-stat.male {
-    border-color: #3b82f6;
-    background: linear-gradient(135deg, #dbeafe 0%, #f0f9ff 100%);
-  }
-
-  .gender-stat.female {
-    border-color: #ec4899;
-    background: linear-gradient(135deg, #fce7f3 0%, #fdf2f8 100%);
-  }
-
-  .gender-icon {
-    font-size: 2rem;
-  }
-
-  .gender-count {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1e293b;
-  }
-
-  .gender-label {
-    font-size: 0.875rem;
-    color: #64748b;
-  }
-
-  .peaks h3 {
-    margin: 0 0 1rem 0;
-    color: #1e293b;
-  }
-
-  .peaks-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem;
-  }
-
-  .peak-card {
+    padding: 0.75rem;
     text-align: center;
-    padding: 1.5rem;
-    border-radius: 12px;
-    border: 2px solid;
-  }
-
-  .peak-card.male {
-    border-color: #3b82f6;
-    background: linear-gradient(135deg, #dbeafe 0%, #f0f9ff 100%);
-  }
-
-  .peak-card.female {
-    border-color: #ec4899;
-    background: linear-gradient(135deg, #fce7f3 0%, #fdf2f8 100%);
-  }
-
-  .peak-year {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1e293b;
-    margin-bottom: 0.25rem;
-  }
-
-  .peak-count {
-    font-size: 1rem;
     font-weight: 600;
     color: #374151;
-    margin-bottom: 0.25rem;
+    border-bottom: 2px solid #e2e8f0;
   }
 
-  .peak-label {
+  .summary-table td {
+    padding: 0.75rem;
+    text-align: center;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .summary-table .total-cell {
+    font-weight: 700;
+    color: #1e293b;
+    background: #f0f9ff;
+  }
+
+  .summary-table .row-type {
+    font-weight: 600;
+    color: #374151;
+    background: transparent;
+    border-right: 2px solid #e2e8f0;
+  }
+
+  .summary-table .number-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.125rem;
+  }
+
+  .summary-table .percentage-value {
     font-size: 0.875rem;
     color: #64748b;
+    font-style: italic;
+  }
+
+  .summary-table .peak-row td {
+    padding: 0.75rem;
+    text-align: center;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+
+
+
+
+  .chart-section {
+    margin-top: 2rem;
   }
 
   .chart-section h3,
