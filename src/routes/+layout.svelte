@@ -7,7 +7,8 @@
   const navigation = [
     { href: base, label: 'Classements', icon: '📊' },
     { href: `${base}/prenom`, label: 'Détails d\'un prénom', icon: '📈' },
-    { href: `${base}/comparaison`, label: 'Comparaison', icon: '⚖️' }
+    { href: `${base}/comparaison`, label: 'Comparaison', icon: '⚖️' },
+    { href: `${base}/a-propos`, label: 'À propos', icon: 'ℹ️' }
   ];
 
   let starCount = null;
@@ -109,7 +110,7 @@
   }
 
   nav {
-    max-width: 1000px;
+    max-width: 1100px;
     margin: 0 auto;
   }
 
