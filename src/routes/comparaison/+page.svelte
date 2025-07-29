@@ -197,7 +197,8 @@
     if (nameInput.length >= 2) {
       suggestionTimeout = setTimeout(async () => {
         try {
-          suggestions = await searchNamesByPattern(nameInput, null, null, 20, groupSimilar);
+          // For autocomplete, always use individual names (not grouped)
+          suggestions = await searchNamesByPattern(nameInput, null, null, 20, false);
           // Filter out already selected names
           suggestions = suggestions.filter(s => 
             !selectedNames.some(name => name.toLowerCase() === s.prenom.toLowerCase())
