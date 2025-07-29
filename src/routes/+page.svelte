@@ -288,18 +288,13 @@
       </div>
 
       {#if totalPages > 1}
-        <div class="pagination card">
-          <div class="pagination-info">
-            Page {currentPage} sur {totalPages}
-          </div>
-          
-          <div class="pagination-controls">
+        <div class="pagination-controls">
             <button 
               class="btn btn-secondary"
               disabled={currentPage === 1}
               on:click={() => goToPage(1)}
             >
-              ⏮️ Première
+              &lt;&lt;
             </button>
             
             <button 
@@ -307,7 +302,7 @@
               disabled={currentPage === 1}
               on:click={() => goToPage(currentPage - 1)}
             >
-              ◀️ Précédente
+              &lt;
             </button>
             
             <span class="page-numbers">
@@ -330,7 +325,7 @@
               disabled={currentPage === totalPages}
               on:click={() => goToPage(currentPage + 1)}
             >
-              ▶️ Suivante
+              &gt;
             </button>
             
             <button 
@@ -338,10 +333,9 @@
               disabled={currentPage === totalPages}
               on:click={() => goToPage(totalPages)}
             >
-              ⏭️ Dernière
+              &gt;&gt;
             </button>
           </div>
-        </div>
       {/if}
     </div>
   {:else}
@@ -556,10 +550,29 @@
   .page-numbers .btn {
     min-width: 40px;
     padding: 0.5rem;
+    text-align: center;
+    background: #64748b;
+    color: white;
+    font-weight: bold;
+    display: inline-block;
+    justify-content: center;
+    align-items: center;
   }
 
   .page-numbers .btn.active {
-    background: #1e293b;
+    background: #3b82f6;
+    color: white;
+    font-weight: bold;
+  }
+
+  .pagination-controls .btn {
+    min-width: 40px;
+    padding: 0.5rem;
+    text-align: center;
+    font-weight: bold;
+    display: inline-block;
+    justify-content: center;
+    align-items: center;
   }
 
   .pagination-info {
