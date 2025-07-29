@@ -365,31 +365,7 @@
         />
       </div>
 
-      <!-- Data Table -->
-      <div class="data-table card">
-        <h3>📋 Données détaillées</h3>
-        
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Année</th>
-                <th>Sexe</th>
-                <th>Naissances</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each data.sort((a, b) => b.periode - a.periode || a.sexe - b.sexe) as item}
-                <tr>
-                  <td>{item.periode}</td>
-                  <td>{item.sexe === 1 ? '👦 Masculin' : '👧 Féminin'}</td>
-                  <td class="number">{formatNumber(item.valeur)}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-      </div>
+
     </div>
   {:else if selectedName}
     <div class="no-results card">
