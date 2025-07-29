@@ -6,6 +6,7 @@
   let nameInput = '';
   let selectedNames = [];
   let groupSimilar = false; // New toggle for grouping similar names
+  let selectedSex = null; // null = mixte, 1 = male, 2 = female
   let data = [];
   let suggestions = [];
   let loading = false;
@@ -15,14 +16,15 @@
 
   $: comparisonStats = calculateComparisonStats(data);
   $: hasData = selectedNames.length > 0 && data.length > 0;
-  $: if (selectedNames || groupSimilar) saveState(); // Save state whenever selectedNames or groupSimilar changes
+  $: if (selectedNames || groupSimilar || selectedSex !== null) saveState(); // Save state whenever relevant variables change
 
   // State persistence functions
   function saveState() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('prenomscope-comparaison-state', JSON.stringify({
         selectedNames,
-        groupSimilar
+        groupSimilar,
+        selectedSex
       }));
     }
   }
@@ -35,6 +37,7 @@
           const state = JSON.parse(saved);
           selectedNames = state.selectedNames || [];
           groupSimilar = state.groupSimilar || false;
+          selectedSex = state.selectedSex !== undefined ? state.selectedSex : null;
         } catch (err) {
           console.error('Error loading saved state:', err);
         }
@@ -145,9 +148,15 @@
     error = null;
 
     try {
-      console.log('Loading comparison data for names:', selectedNames, 'groupSimilar:', groupSimilar);
+      console.log('Loading comparison data for names:', selectedNames, 'groupSimilar:', groupSimilar, 'selectedSex:', selectedSex);
       data = await getDataByNames(selectedNames, groupSimilar);
       console.log('Loaded data:', data);
+      
+      // Filter by sex if selected
+      if (selectedSex !== null) {
+        data = data.filter(d => d.sexe === selectedSex);
+        console.log('Filtered data by sex:', selectedSex, 'data length:', data.length);
+      }
       
       // Check if some names have no data
       const namesWithData = [...new Set(data.map(d => d.prenom))];
@@ -169,7 +178,9 @@
       }
       
       if (missingNames.length > 0) {
-        error = `Aucune donnée trouvée pour : ${missingNames.join(', ')}`;
+        const sexLabel = selectedSex === 1 ? 'masculin' : selectedSex === 2 ? 'féminin' : '';
+        const sexText = sexLabel ? ` (${sexLabel})` : '';
+        error = `Aucune donnée trouvée pour : ${missingNames.join(', ')}${sexText}`;
       }
     } catch (err) {
       console.error('Error loading comparison data:', err);
@@ -210,6 +221,12 @@
   }
 
   function handleGroupSimilarChange() {
+    if (selectedNames.length > 0) {
+      loadComparisonData();
+    }
+  }
+
+  function handleSexChange() {
     if (selectedNames.length > 0) {
       loadComparisonData();
     }
@@ -260,19 +277,37 @@
         </button>
       </div>
 
-      <div class="grouping-toggle">
-        <label for="group-similar-comparaison">
-          <strong>🔗 Variantes</strong>
-        </label>
-        <select 
-          id="group-similar-comparaison"
-          class="select"
-          bind:value={groupSimilar}
-          on:change={handleGroupSimilarChange}
-        >
-          <option value={false}>Orthographe exacte</option>
-          <option value={true}>Sonorité similaire</option>
-        </select>
+      <div class="filters-row">
+        <div class="filter-group">
+          <label for="group-similar-comparaison">
+            <strong>🔗 Variantes</strong>
+          </label>
+          <select 
+            id="group-similar-comparaison"
+            class="select"
+            bind:value={groupSimilar}
+            on:change={handleGroupSimilarChange}
+          >
+            <option value={false}>Orthographe exacte</option>
+            <option value={true}>Sonorité similaire</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="sex-filter-comparaison">
+            <strong>👤 Sexe</strong>
+          </label>
+          <select 
+            id="sex-filter-comparaison"
+            class="select"
+            bind:value={selectedSex}
+            on:change={handleSexChange}
+          >
+            <option value={null}>👫 Mixte</option>
+            <option value={1}>👦 Masculin</option>
+            <option value={2}>👧 Féminin</option>
+          </select>
+        </div>
       </div>
 
       {#if showSuggestions && suggestions.length > 0}
@@ -668,6 +703,30 @@
   .no-results {
     text-align: center;
     color: #64748b;
+  }
+
+  .filters-row {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .filter-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #374151;
+  }
+
+  .filter-group .select {
+    width: 100%;
   }
 
   @media (max-width: 768px) {

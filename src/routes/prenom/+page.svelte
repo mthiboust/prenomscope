@@ -7,6 +7,7 @@
   let nameQuery = '';
   let selectedName = '';
   let groupSimilar = false; // New toggle for grouping similar names
+  let selectedSex = null; // null = mixte, 1 = male, 2 = female
   let data = [];
   let suggestions = [];
   let loading = false;
@@ -15,7 +16,7 @@
   let suggestionTimeout;
 
   $: stats = calculateStats(data);
-  $: if (nameQuery || selectedName || groupSimilar) saveState(); // Save state when relevant variables change
+  $: if (nameQuery || selectedName || groupSimilar || selectedSex !== null) saveState(); // Save state when relevant variables change
 
   // State persistence functions
   function saveState() {
@@ -23,7 +24,8 @@
       localStorage.setItem('prenomscope-prenom-state', JSON.stringify({
         nameQuery,
         selectedName,
-        groupSimilar
+        groupSimilar,
+        selectedSex
       }));
     }
   }
@@ -37,6 +39,7 @@
           nameQuery = state.nameQuery || '';
           selectedName = state.selectedName || '';
           groupSimilar = state.groupSimilar || false;
+          selectedSex = state.selectedSex !== undefined ? state.selectedSex : null;
         } catch (err) {
           console.error('Error loading saved state:', err);
         }
@@ -102,11 +105,19 @@
     
     try {
       data = await getDataByName(name.trim(), groupSimilar);
+      
+      // Filter by sex if selected
+      if (selectedSex !== null) {
+        data = data.filter(d => d.sexe === selectedSex);
+      }
+      
       selectedName = name.trim();
       saveState();
       
       if (data.length === 0) {
-        error = `Aucune donnée trouvée pour le prénom "${name}". Vérifiez l'orthographe ou essayez une variante.`;
+        const sexLabel = selectedSex === 1 ? 'masculin' : selectedSex === 2 ? 'féminin' : '';
+        const sexText = sexLabel ? ` (${sexLabel})` : '';
+        error = `Aucune donnée trouvée pour le prénom "${name}"${sexText}. Vérifiez l'orthographe ou essayez une variante.`;
       }
     } catch (err) {
       error = err.message;
@@ -150,6 +161,12 @@
   }
 
   function handleGroupSimilarChange() {
+    if (selectedName) {
+      loadNameData(selectedName);
+    }
+  }
+
+  function handleSexChange() {
     if (selectedName) {
       loadNameData(selectedName);
     }
@@ -211,19 +228,37 @@
         {/if}
       </div>
 
-      <div class="grouping-toggle">
-        <label for="group-similar-prenom">
-          <strong>🔗 Variantes</strong>
-        </label>
-        <select 
-          id="group-similar-prenom"
-          class="select"
-          bind:value={groupSimilar}
-          on:change={handleGroupSimilarChange}
-        >
-          <option value={false}>Orthographe exacte</option>
-          <option value={true}>Sonorité similaire</option>
-        </select>
+      <div class="filters-row">
+        <div class="filter-group">
+          <label for="group-similar-prenom">
+            <strong>🔗 Variantes</strong>
+          </label>
+          <select 
+            id="group-similar-prenom"
+            class="select"
+            bind:value={groupSimilar}
+            on:change={handleGroupSimilarChange}
+          >
+            <option value={false}>Orthographe exacte</option>
+            <option value={true}>Sonorité similaire</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="sex-filter">
+            <strong>👤 Sexe</strong>
+          </label>
+          <select 
+            id="sex-filter"
+            class="select"
+            bind:value={selectedSex}
+            on:change={handleSexChange}
+          >
+            <option value={null}>👫 Mixte</option>
+            <option value={1}>👦 Masculin</option>
+            <option value={2}>👧 Féminin</option>
+          </select>
+        </div>
       </div>
     </div>
   </div>
@@ -627,6 +662,30 @@
   .no-results {
     text-align: center;
     color: #64748b;
+  }
+
+  .filters-row {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .filter-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #374151;
+  }
+
+  .filter-group .select {
+    width: 100%;
   }
 
   @media (max-width: 768px) {
