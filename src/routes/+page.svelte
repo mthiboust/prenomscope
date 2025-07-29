@@ -235,17 +235,12 @@
     </div>
   {:else if data.length > 0}
     <div class="results">
-      <div class="results-header card">
-        <h2>
-          Top des prénoms {sexLabel} en {selectedYear}
-        </h2>
-        <p>
-          {formatNumber(totalItems)} prénoms au total
-          • Page {currentPage} sur {totalPages}
-        </p>
-      </div>
-
       <div class="ranking card">
+        <div class="ranking-title">
+          <h3>
+            📊 Top des prénoms {sexLabel} en {selectedYear} • {formatNumber(totalItems)} prénoms au total
+          </h3>
+        </div>
         <div class="ranking-header">
           <div class="header-cell">Rang</div>
           <div class="header-delta-section">
@@ -377,19 +372,16 @@
     color: #374151;
   }
 
-  .results-header {
-    text-align: center;
+  .ranking-title {
+    text-align: left;
     margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e2e8f0;
   }
 
-  .results-header h2 {
-    margin: 0 0 0.5rem 0;
+  .ranking-title h3 {
+    margin: 0 0 1.5rem 0;
     color: #1e293b;
-  }
-
-  .results-header p {
-    margin: 0;
-    color: #64748b;
   }
 
   .ranking {
