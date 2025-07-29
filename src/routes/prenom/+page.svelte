@@ -51,9 +51,11 @@
     // Check if name is provided in URL query (takes precedence)
     const urlName = $page.url.searchParams.get('nom');
     if (urlName) {
-      nameQuery = urlName;
-      selectedName = urlName;
-      loadNameData(urlName);
+      // Extract only the first name if it contains "/" (from grouped names)
+      const firstName = urlName.split(' / ')[0].trim();
+      nameQuery = firstName;
+      selectedName = firstName;
+      loadNameData(firstName);
     } else if (selectedName) {
       // If no URL param but we have saved state, load the saved name
       loadNameData(selectedName);
@@ -127,7 +129,8 @@
     if (nameQuery.length >= 2) {
       suggestionTimeout = setTimeout(async () => {
         try {
-          suggestions = await searchNamesByPattern(nameQuery, null, null, 20, groupSimilar);
+          // For autocomplete, always use individual names (not grouped)
+          suggestions = await searchNamesByPattern(nameQuery, null, null, 20, false);
           showSuggestions = suggestions.length > 0;
         } catch (err) {
           suggestions = [];

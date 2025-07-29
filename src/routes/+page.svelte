@@ -285,7 +285,7 @@
               </div>
             </div>
             <div class="name">
-              <a href="{base}/prenom?nom={encodeURIComponent(item.prenom)}" class="name-link">
+              <a href="{base}/prenom?nom={encodeURIComponent(groupSimilar ? item.prenom.split(' / ')[0] : item.prenom)}" class="name-link">
                 {item.prenom}
               </a>
             </div>
