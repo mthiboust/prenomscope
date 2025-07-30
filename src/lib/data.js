@@ -45,9 +45,9 @@ export async function initDatabase() {
  */
 export async function loadDatabaseFile() {
   try {
-    console.log("Loading parquet file with normalized names...");
+    console.log("Loading parquet file with accent-agnostic names...");
     
-    const response = await fetch("./data/names_with_normalized.parquet");
+    const response = await fetch("./data/names_with_accent_agnostic.parquet");
     
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -56,11 +56,11 @@ export async function loadDatabaseFile() {
     console.log("Fetched parquet file into ArrayBuffer, size:", buffer.byteLength);
 
     // Register the parquet file using the ArrayBuffer
-    await db.registerFileBuffer('names_with_normalized.parquet', new Uint8Array(buffer));
+    await db.registerFileBuffer('names_with_accent_agnostic.parquet', new Uint8Array(buffer));
     console.log("Parquet file registered with DuckDB via buffer.");
 
     // Create a view from the parquet file
-    await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('names_with_normalized.parquet')");
+    await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('names_with_accent_agnostic.parquet')");
 
     const debug = await conn.query(`
       SELECT COUNT(*) as total_rows FROM prenoms;
@@ -108,17 +108,32 @@ export function formatName(name) {
  * @param {number} year - The year to search in
  * @param {number} offset - Offset for pagination
  * @param {number} limit - Number of results per page
- * @param {boolean} groupSimilar - Whether to group similar names
+ * @param {string} searchMode - Search mode: 'exact', 'accent_agnostic', or 'similar'
  * @returns {Promise<{data: Array, total: number}>} Array of matching records and total count
  */
-export async function getDataBySexYear(sex, year, offset = 0, limit = 50, groupSimilar = false) {
+export async function getDataBySexYear(sex, year, offset = 0, limit = 50, searchMode = 'exact') {
   await ensureDatabase();
   
   try {
-    let groupByClause = groupSimilar ? 'prenom_normalized' : 'prenom';
-    let selectClause = groupSimilar 
-      ? 'prenom_normalized as prenom, SUM(valeur) as valeur, sexe, periode'
-      : 'prenom, valeur, sexe, periode';
+    let groupByClause, selectClause;
+    
+    switch (searchMode) {
+      case 'exact':
+        groupByClause = 'prenom';
+        selectClause = 'prenom, valeur, sexe, periode';
+        break;
+      case 'accent_agnostic':
+        groupByClause = 'prenom_accent_agnostic';
+        selectClause = 'prenom_accent_agnostic as prenom, SUM(valeur) as valeur, sexe, periode';
+        break;
+      case 'similar':
+        groupByClause = 'prenom_normalized';
+        selectClause = 'prenom_normalized as prenom, SUM(valeur) as valeur, sexe, periode';
+        break;
+      default:
+        groupByClause = 'prenom';
+        selectClause = 'prenom, valeur, sexe, periode';
+    }
     
     // Get total count
     const countResult = await conn.query(`
@@ -133,7 +148,7 @@ export async function getDataBySexYear(sex, year, offset = 0, limit = 50, groupS
       SELECT ${selectClause}
       FROM prenoms
       WHERE sexe = ${sex} AND periode = ${year}
-      ${groupSimilar ? 'GROUP BY prenom_normalized, sexe, periode' : ''}
+      ${searchMode !== 'exact' ? `GROUP BY ${groupByClause}, sexe, periode` : ''}
       ORDER BY valeur DESC
       LIMIT ${limit} OFFSET ${offset}
     `);
@@ -158,16 +173,28 @@ export async function getDataBySexYear(sex, year, offset = 0, limit = 50, groupS
  * @param {string} name - The name to search for
  * @param {number} sex - Sex (1 = male, 2 = female)
  * @param {number} year - The year to search in
- * @param {boolean} groupSimilar - Whether to group similar names
+ * @param {string} searchMode - Search mode: 'exact', 'accent_agnostic', or 'similar'
  * @returns {Promise<Array>} Array of matching records
  */
-export async function getDataByNameSexYear(name, sex, year, groupSimilar = false) {
+export async function getDataByNameSexYear(name, sex, year, searchMode = 'exact') {
   await ensureDatabase();
   
   try {
-    let whereClause = groupSimilar 
-      ? `UPPER(prenom_normalized) = UPPER('${name.toLowerCase()}')`
-      : `UPPER(prenom) = UPPER('${name}')`;
+    let whereClause;
+    
+    switch (searchMode) {
+      case 'exact':
+        whereClause = `UPPER(prenom) = UPPER('${name}')`;
+        break;
+      case 'accent_agnostic':
+        whereClause = `UPPER(prenom_accent_agnostic) = UPPER('${name.toLowerCase()}')`;
+        break;
+      case 'similar':
+        whereClause = `UPPER(prenom_normalized) = UPPER('${name.toLowerCase()}')`;
+        break;
+      default:
+        whereClause = `UPPER(prenom) = UPPER('${name}')`;
+    }
     
     const result = await conn.query(`
       SELECT prenom, valeur, sexe, periode 
@@ -191,90 +218,147 @@ export async function getDataByNameSexYear(name, sex, year, groupSimilar = false
 /**
  * Get data for a specific name across all years and sexes
  * @param {string} name - The name to search for
- * @param {boolean} groupSimilar - Whether to group similar names
+ * @param {string} searchMode - Search mode: 'exact', 'accent_agnostic', or 'similar'
  * @returns {Promise<Array>} Array of records for the name
  */
-export async function getDataByName(name, groupSimilar = false) {
+export async function getDataByName(name, searchMode = 'exact') {
   await ensureDatabase();
   
   try {
-    console.log('getDataByName called with:', { name, groupSimilar });
+    console.log('getDataByName called with:', { name, searchMode });
     
     let query;
     
-    if (groupSimilar) {
-      // For similar sound, find all individual variants of the normalized name
-      // First try to find the normalized version using SQL
-      query = `
-        WITH target_normalized AS (
-          SELECT DISTINCT prenom_normalized
+    switch (searchMode) {
+      case 'exact':
+        // For exact spelling, use the original name
+        query = `
+          SELECT prenom, valeur, sexe, periode 
           FROM prenoms
           WHERE UPPER(prenom) = UPPER('${name}')
-        )
-        SELECT 
-          p.prenom,
-          p.valeur,
-          p.sexe,
-          p.periode
-        FROM prenoms p
-        INNER JOIN target_normalized tn ON p.prenom_normalized = tn.prenom_normalized
-        ORDER BY p.prenom, p.periode ASC, p.sexe
-      `;
-      
-      console.log('Trying to find normalized version query:', query);
-      let result = await conn.query(query);
-      let data = result.toArray();
-      console.log('Normalized version search results:', data.length);
-      
-      // If no results found, try fuzzy search in normalized field
-      if (data.length === 0) {
+          ORDER BY periode ASC, sexe
+        `;
+        
+        console.log('Exact spelling query:', query);
+        const result = await conn.query(query);
+        const data = result.toArray();
+        console.log('Exact spelling results:', data.length);
+        
+        return data.map(row => ({
+          ...row,
+          prenom: formatName(row.prenom),
+          valeur: Number(row.valeur),
+          sexe: Number(row.sexe),
+          periode: Number(row.periode)
+        }));
+        
+      case 'accent_agnostic':
+        // For accent-agnostic, find all variants with the same accent-agnostic version
         query = `
+          WITH target_accent_agnostic AS (
+            SELECT DISTINCT prenom_accent_agnostic
+            FROM prenoms
+            WHERE UPPER(prenom) = UPPER('${name}')
+          )
           SELECT 
             p.prenom,
             p.valeur,
             p.sexe,
             p.periode
           FROM prenoms p
-          WHERE UPPER(p.prenom_normalized) LIKE UPPER('%${name.toLowerCase()}%')
+          INNER JOIN target_accent_agnostic ta ON p.prenom_accent_agnostic = ta.prenom_accent_agnostic
           ORDER BY p.prenom, p.periode ASC, p.sexe
-          LIMIT 100
         `;
         
-        console.log('Trying fuzzy normalized search query:', query);
-        result = await conn.query(query);
-        data = result.toArray();
-        console.log('Fuzzy normalized search results:', data.length);
-      }
-      
-      console.log('Final data for groupSimilar=true:', data);
-      return data.map(row => ({
-        ...row,
-        prenom: formatName(row.prenom),
-        valeur: Number(row.valeur),
-        sexe: Number(row.sexe),
-        periode: Number(row.periode)
-      }));
-    } else {
-      // For exact spelling, use the original name
-      query = `
-        SELECT prenom, valeur, sexe, periode 
-        FROM prenoms
-        WHERE UPPER(prenom) = UPPER('${name}')
-        ORDER BY periode ASC, sexe
-      `;
-      
-      console.log('Exact spelling query:', query);
-      const result = await conn.query(query);
-      const data = result.toArray();
-      console.log('Exact spelling results:', data.length);
-      
-      return data.map(row => ({
-        ...row,
-        prenom: formatName(row.prenom),
-        valeur: Number(row.valeur),
-        sexe: Number(row.sexe),
-        periode: Number(row.periode)
-      }));
+        console.log('Trying to find accent-agnostic version query:', query);
+        let accentResult = await conn.query(query);
+        let accentData = accentResult.toArray();
+        console.log('Accent-agnostic version search results:', accentData.length);
+        
+        // If no results found, try fuzzy search in accent-agnostic field
+        if (accentData.length === 0) {
+          query = `
+            SELECT 
+              p.prenom,
+              p.valeur,
+              p.sexe,
+              p.periode
+            FROM prenoms p
+            WHERE UPPER(p.prenom_accent_agnostic) LIKE UPPER('%${name.toLowerCase()}%')
+            ORDER BY p.prenom, p.periode ASC, p.sexe
+            LIMIT 100
+          `;
+          
+          console.log('Trying fuzzy accent-agnostic search query:', query);
+          accentResult = await conn.query(query);
+          accentData = accentResult.toArray();
+          console.log('Fuzzy accent-agnostic search results:', accentData.length);
+        }
+        
+        console.log('Final data for accent_agnostic:', accentData);
+        return accentData.map(row => ({
+          ...row,
+          prenom: formatName(row.prenom),
+          valeur: Number(row.valeur),
+          sexe: Number(row.sexe),
+          periode: Number(row.periode)
+        }));
+        
+      case 'similar':
+        // For similar sound, find all individual variants of the normalized name
+        // First try to find the normalized version using SQL
+        query = `
+          WITH target_normalized AS (
+            SELECT DISTINCT prenom_normalized
+            FROM prenoms
+            WHERE UPPER(prenom) = UPPER('${name}')
+          )
+          SELECT 
+            p.prenom,
+            p.valeur,
+            p.sexe,
+            p.periode
+          FROM prenoms p
+          INNER JOIN target_normalized tn ON p.prenom_normalized = tn.prenom_normalized
+          ORDER BY p.prenom, p.periode ASC, p.sexe
+        `;
+        
+        console.log('Trying to find normalized version query:', query);
+        let similarResult = await conn.query(query);
+        let similarData = similarResult.toArray();
+        console.log('Normalized version search results:', similarData.length);
+        
+        // If no results found, try fuzzy search in normalized field
+        if (similarData.length === 0) {
+          query = `
+            SELECT 
+              p.prenom,
+              p.valeur,
+              p.sexe,
+              p.periode
+            FROM prenoms p
+            WHERE UPPER(p.prenom_normalized) LIKE UPPER('%${name.toLowerCase()}%')
+            ORDER BY p.prenom, p.periode ASC, p.sexe
+            LIMIT 100
+          `;
+          
+          console.log('Trying fuzzy normalized search query:', query);
+          similarResult = await conn.query(query);
+          similarData = similarResult.toArray();
+          console.log('Fuzzy normalized search results:', similarData.length);
+        }
+        
+        console.log('Final data for similar:', similarData);
+        return similarData.map(row => ({
+          ...row,
+          prenom: formatName(row.prenom),
+          valeur: Number(row.valeur),
+          sexe: Number(row.sexe),
+          periode: Number(row.periode)
+        }));
+        
+      default:
+        throw new Error(`Invalid search mode: ${searchMode}`);
     }
   } catch (err) {
     console.error("Error getting data by name:", err);
@@ -285,53 +369,84 @@ export async function getDataByName(name, groupSimilar = false) {
 /**
  * Get data for multiple names for comparison
  * @param {Array<string>} names - Array of names to compare
- * @param {boolean} groupSimilar - Whether to group similar names
+ * @param {string} searchMode - Search mode: 'exact', 'accent_agnostic', or 'similar'
  * @returns {Promise<Array>} Array of records for all names
  */
-export async function getDataByNames(names, groupSimilar = false) {
+export async function getDataByNames(names, searchMode = 'exact') {
   await ensureDatabase();
   
   try {
     let query;
     
-    if (groupSimilar) {
-      // For similar sound, we need to find names that match the normalized versions
-      // We'll use a subquery to find the normalized versions first
-      const upperNames = names.map(name => `'${name.toUpperCase()}'`);
-      const namesList = upperNames.join(',');
-      
-      query = `
-        WITH target_normalized AS (
-          SELECT DISTINCT prenom_normalized
+    let upperNames, namesList;
+    
+    switch (searchMode) {
+      case 'exact':
+        // For exact spelling, use the original names
+        upperNames = names.map(name => `'${name.toUpperCase()}'`);
+        namesList = upperNames.join(',');
+        
+        query = `
+          SELECT prenom, valeur, sexe, periode 
           FROM prenoms
           WHERE prenom IN (${namesList})
-        )
-        SELECT 
-          p.prenom_normalized as prenom,
-          SUM(p.valeur) as valeur,
-          p.sexe,
-          p.periode
-        FROM prenoms p
-        INNER JOIN target_normalized tn ON p.prenom_normalized = tn.prenom_normalized
-        GROUP BY p.prenom_normalized, p.sexe, p.periode
-        ORDER BY p.prenom_normalized, p.periode ASC, p.sexe
-      `;
-    } else {
-      // For exact spelling, use the original names
-      const upperNames = names.map(name => `'${name.toUpperCase()}'`);
-      const namesList = upperNames.join(',');
-      
-      query = `
-        SELECT prenom, valeur, sexe, periode 
-        FROM prenoms
-        WHERE prenom IN (${namesList})
-        ORDER BY prenom, periode ASC, sexe
-      `;
+          ORDER BY prenom, periode ASC, sexe
+        `;
+        break;
+        
+      case 'accent_agnostic':
+        // For accent-agnostic, we need to find names that match the accent-agnostic versions
+        upperNames = names.map(name => `'${name.toUpperCase()}'`);
+        namesList = upperNames.join(',');
+        
+        query = `
+          WITH target_accent_agnostic AS (
+            SELECT DISTINCT prenom_accent_agnostic
+            FROM prenoms
+            WHERE prenom IN (${namesList})
+          )
+          SELECT 
+            p.prenom_accent_agnostic as prenom,
+            SUM(p.valeur) as valeur,
+            p.sexe,
+            p.periode
+          FROM prenoms p
+          INNER JOIN target_accent_agnostic ta ON p.prenom_accent_agnostic = ta.prenom_accent_agnostic
+          GROUP BY p.prenom_accent_agnostic, p.sexe, p.periode
+          ORDER BY p.prenom_accent_agnostic, p.periode ASC, p.sexe
+        `;
+        break;
+        
+      case 'similar':
+        // For similar sound, we need to find names that match the normalized versions
+        upperNames = names.map(name => `'${name.toUpperCase()}'`);
+        namesList = upperNames.join(',');
+        
+        query = `
+          WITH target_normalized AS (
+            SELECT DISTINCT prenom_normalized
+            FROM prenoms
+            WHERE prenom IN (${namesList})
+          )
+          SELECT 
+            p.prenom_normalized as prenom,
+            SUM(p.valeur) as valeur,
+            p.sexe,
+            p.periode
+          FROM prenoms p
+          INNER JOIN target_normalized tn ON p.prenom_normalized = tn.prenom_normalized
+          GROUP BY p.prenom_normalized, p.sexe, p.periode
+          ORDER BY p.prenom_normalized, p.periode ASC, p.sexe
+        `;
+        break;
+        
+      default:
+        throw new Error(`Invalid search mode: ${searchMode}`);
     }
     
     console.log('getDataByNames query:', query);
     console.log('getDataByNames names:', names);
-    console.log('getDataByNames groupSimilar:', groupSimilar);
+    console.log('getDataByNames searchMode:', searchMode);
     
     const result = await conn.query(query);
     console.log('getDataByNames raw result:', result.toString());
@@ -344,28 +459,29 @@ export async function getDataByNames(names, groupSimilar = false) {
       periode: Number(row.periode)
     }));
     
-    // If grouping is enabled, get the variations for each normalized name
-    if (groupSimilar) {
-      // Get all variations for the normalized names we found
-      const normalizedNames = [...new Set(data.map(item => item.prenom.toLowerCase()))];
-      const normalizedNamesList = normalizedNames.map(name => `'${name}'`).join(',');
+    // If grouping is enabled, get the variations for each grouped name
+    if (searchMode !== 'exact') {
+      const groupedNames = [...new Set(data.map(item => item.prenom.toLowerCase()))];
+      const groupedNamesList = groupedNames.map(name => `'${name}'`).join(',');
       
-      if (normalizedNamesList) {
+      if (groupedNamesList) {
+        const columnName = searchMode === 'accent_agnostic' ? 'prenom_accent_agnostic' : 'prenom_normalized';
+        
         const variationsData = await conn.query(`
           SELECT 
-            prenom_normalized,
+            ${columnName},
             prenom,
             sexe,
             COUNT(*) as count
           FROM prenoms
-          WHERE prenom_normalized IN (${normalizedNamesList})
-          GROUP BY prenom_normalized, prenom, sexe
-          ORDER BY prenom_normalized, sexe, count DESC
+          WHERE ${columnName} IN (${groupedNamesList})
+          GROUP BY ${columnName}, prenom, sexe
+          ORDER BY ${columnName}, sexe, count DESC
         `);
         
         const variationsMap = {};
         variationsData.toArray().forEach(row => {
-          const key = `${row.prenom_normalized}_${row.sexe}`;
+          const key = `${row[columnName]}_${row.sexe}`;
           if (!variationsMap[key]) {
             variationsMap[key] = [];
           }
@@ -436,26 +552,53 @@ export async function getAvailableYears() {
  * @param {number} year - Year to search in (optional)
  * @param {number} sex - Sex filter (optional)
  * @param {number} limit - Maximum number of results
- * @param {boolean} groupSimilar - Whether to group similar names
+ * @param {string} searchMode - Search mode: 'exact', 'accent_agnostic', or 'similar'
  * @returns {Promise<Array>} Array of matching names
  */
-export async function searchNamesByPattern(pattern, year = null, sex = null, limit = 20, groupSimilar = false) {
+export async function searchNamesByPattern(pattern, year = null, sex = null, limit = 20, searchMode = 'exact') {
   await ensureDatabase();
   
   try {
-    let groupByClause = groupSimilar ? 'prenom_normalized' : 'prenom';
-    let selectClause = groupSimilar 
-      ? 'prenom_normalized as prenom, SUM(valeur) as total_valeur'
-      : 'prenom, SUM(valeur) as total_valeur';
+    let groupByClause, selectClause, whereClause;
     
-    // Normalize the pattern for similar sound search
-    const normalizedPattern = groupSimilar 
-      ? pattern.toLowerCase().replace(/[éèêë]/g, 'e').replace(/[àâä]/g, 'a').replace(/[îï]/g, 'i').replace(/[ôö]/g, 'o').replace(/[ûüù]/g, 'u').replace(/[ç]/g, 'c')
-      : pattern;
-    
-    let whereClause = groupSimilar 
-      ? `UPPER(prenom_normalized) LIKE UPPER('%${normalizedPattern}%')`
-      : `UPPER(prenom) LIKE UPPER('%${pattern}%')`;
+    switch (searchMode) {
+      case 'exact':
+        groupByClause = 'prenom';
+        selectClause = 'prenom, SUM(valeur) as total_valeur';
+        whereClause = `UPPER(prenom) LIKE UPPER('%${pattern}%')`;
+        break;
+        
+      case 'accent_agnostic':
+        groupByClause = 'prenom_accent_agnostic';
+        selectClause = 'prenom_accent_agnostic as prenom, SUM(valeur) as total_valeur';
+        // Normalize the pattern for accent-agnostic search
+        const accentAgnosticPattern = pattern.toLowerCase()
+          .replace(/[éèêë]/g, 'e')
+          .replace(/[àâä]/g, 'a')
+          .replace(/[îï]/g, 'i')
+          .replace(/[ôö]/g, 'o')
+          .replace(/[ûüù]/g, 'u')
+          .replace(/[ç]/g, 'c');
+        whereClause = `UPPER(prenom_accent_agnostic) LIKE UPPER('%${accentAgnosticPattern}%')`;
+        break;
+        
+      case 'similar':
+        groupByClause = 'prenom_normalized';
+        selectClause = 'prenom_normalized as prenom, SUM(valeur) as total_valeur';
+        // Normalize the pattern for similar sound search
+        const normalizedPattern = pattern.toLowerCase()
+          .replace(/[éèêë]/g, 'e')
+          .replace(/[àâä]/g, 'a')
+          .replace(/[îï]/g, 'i')
+          .replace(/[ôö]/g, 'o')
+          .replace(/[ûüù]/g, 'u')
+          .replace(/[ç]/g, 'c');
+        whereClause = `UPPER(prenom_normalized) LIKE UPPER('%${normalizedPattern}%')`;
+        break;
+        
+      default:
+        throw new Error(`Invalid search mode: ${searchMode}`);
+    }
     
     let query = `
       SELECT ${selectClause}
@@ -480,26 +623,28 @@ export async function searchNamesByPattern(pattern, year = null, sex = null, lim
       total_valeur: Number(row.total_valeur)
     }));
     
-    // If grouping is enabled, get the variations for each normalized name
-    if (groupSimilar && data.length > 0) {
-      const normalizedNames = [...new Set(data.map(item => item.prenom.toLowerCase()))];
-      const normalizedNamesList = normalizedNames.map(name => `'${name}'`).join(',');
+    // If grouping is enabled, get the variations for each grouped name
+    if (searchMode !== 'exact' && data.length > 0) {
+      const groupedNames = [...new Set(data.map(item => item.prenom.toLowerCase()))];
+      const groupedNamesList = groupedNames.map(name => `'${name}'`).join(',');
       
-      if (normalizedNamesList) {
+      if (groupedNamesList) {
+        const columnName = searchMode === 'accent_agnostic' ? 'prenom_accent_agnostic' : 'prenom_normalized';
+        
         const variationsData = await conn.query(`
           SELECT 
-            prenom_normalized,
+            ${columnName},
             prenom,
             COUNT(*) as count
           FROM prenoms
-          WHERE prenom_normalized IN (${normalizedNamesList})
-          GROUP BY prenom_normalized, prenom
-          ORDER BY prenom_normalized, count DESC
+          WHERE ${columnName} IN (${groupedNamesList})
+          GROUP BY ${columnName}, prenom
+          ORDER BY ${columnName}, count DESC
         `);
         
         const variationsMap = {};
         variationsData.toArray().forEach(row => {
-          const key = row.prenom_normalized;
+          const key = row[columnName];
           if (!variationsMap[key]) {
             variationsMap[key] = [];
           }
@@ -549,10 +694,10 @@ export async function searchNamesByPattern(pattern, year = null, sex = null, lim
  * @param {number} year - The year to search in
  * @param {number} offset - Offset for pagination
  * @param {number} limit - Number of results per page
- * @param {boolean} groupSimilar - Whether to group similar names
+ * @param {string} searchMode - Search mode: 'exact', 'accent_agnostic', or 'similar'
  * @returns {Promise<{data: Array, total: number}>} Array of matching records and total count
  */
-export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit = 50, groupSimilar = false) {
+export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit = 50, searchMode = 'exact') {
   await ensureDatabase();
   
   try {
@@ -560,10 +705,25 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
     const fiveYearsAgo = year - 5;
     const tenYearsAgo = year - 10;
     
-    let groupByClause = groupSimilar ? 'prenom_normalized' : 'prenom';
-    let selectClause = groupSimilar 
-      ? 'prenom_normalized as prenom, SUM(valeur) as valeur, sexe, periode'
-      : 'prenom, valeur, sexe, periode';
+    let groupByClause, selectClause;
+    
+    switch (searchMode) {
+      case 'exact':
+        groupByClause = 'prenom';
+        selectClause = 'prenom, valeur, sexe, periode';
+        break;
+      case 'accent_agnostic':
+        groupByClause = 'prenom_accent_agnostic';
+        selectClause = 'prenom_accent_agnostic as prenom, SUM(valeur) as valeur, sexe, periode';
+        break;
+      case 'similar':
+        groupByClause = 'prenom_normalized';
+        selectClause = 'prenom_normalized as prenom, SUM(valeur) as valeur, sexe, periode';
+        break;
+      default:
+        groupByClause = 'prenom';
+        selectClause = 'prenom, valeur, sexe, periode';
+    }
     
     // Get total count
     const countResult = await conn.query(`
@@ -578,34 +738,34 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
       WITH current_year AS (
         SELECT 
           ${selectClause},
-          ROW_NUMBER() OVER (ORDER BY ${groupSimilar ? 'SUM(valeur)' : 'valeur'} DESC) as current_rank
+          ROW_NUMBER() OVER (ORDER BY ${searchMode !== 'exact' ? 'SUM(valeur)' : 'valeur'} DESC) as current_rank
         FROM prenoms
         WHERE sexe = ${sex} AND periode = ${year}
-        ${groupSimilar ? `GROUP BY ${groupByClause}, sexe, periode` : ''}
+        ${searchMode !== 'exact' ? `GROUP BY ${groupByClause}, sexe, periode` : ''}
       ),
       previous_year AS (
         SELECT 
           ${groupByClause} as prenom,
-          ROW_NUMBER() OVER (ORDER BY ${groupSimilar ? 'SUM(valeur)' : 'valeur'} DESC) as previous_rank
+          ROW_NUMBER() OVER (ORDER BY ${searchMode !== 'exact' ? 'SUM(valeur)' : 'valeur'} DESC) as previous_rank
         FROM prenoms
         WHERE sexe = ${sex} AND periode = ${previousYear}
-        ${groupSimilar ? `GROUP BY ${groupByClause}` : ''}
+        ${searchMode !== 'exact' ? `GROUP BY ${groupByClause}` : ''}
       ),
       five_years_ago AS (
         SELECT 
           ${groupByClause} as prenom,
-          ROW_NUMBER() OVER (ORDER BY ${groupSimilar ? 'SUM(valeur)' : 'valeur'} DESC) as five_years_rank
+          ROW_NUMBER() OVER (ORDER BY ${searchMode !== 'exact' ? 'SUM(valeur)' : 'valeur'} DESC) as five_years_rank
         FROM prenoms
         WHERE sexe = ${sex} AND periode = ${fiveYearsAgo}
-        ${groupSimilar ? `GROUP BY ${groupByClause}` : ''}
+        ${searchMode !== 'exact' ? `GROUP BY ${groupByClause}` : ''}
       ),
       ten_years_ago AS (
         SELECT 
           ${groupByClause} as prenom,
-          ROW_NUMBER() OVER (ORDER BY ${groupSimilar ? 'SUM(valeur)' : 'valeur'} DESC) as ten_years_rank
+          ROW_NUMBER() OVER (ORDER BY ${searchMode !== 'exact' ? 'SUM(valeur)' : 'valeur'} DESC) as ten_years_rank
         FROM prenoms
         WHERE sexe = ${sex} AND periode = ${tenYearsAgo}
-        ${groupSimilar ? `GROUP BY ${groupByClause}` : ''}
+        ${searchMode !== 'exact' ? `GROUP BY ${groupByClause}` : ''}
       )
       SELECT 
         c.prenom,
@@ -636,26 +796,28 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
       ten_years_rank: row.ten_years_rank ? Number(row.ten_years_rank) : null
     }));
 
-    // If grouping is enabled, get the variations for each normalized name
-    if (groupSimilar) {
+    // If grouping is enabled, get the variations for each grouped name
+    if (searchMode !== 'exact') {
+      const columnName = searchMode === 'accent_agnostic' ? 'prenom_accent_agnostic' : 'prenom_normalized';
+      
       const variationsData = await conn.query(`
         SELECT 
-          prenom_normalized,
+          ${columnName},
           prenom,
           valeur,
-          ROW_NUMBER() OVER (PARTITION BY prenom_normalized ORDER BY valeur DESC) as freq_rank
+          ROW_NUMBER() OVER (PARTITION BY ${columnName} ORDER BY valeur DESC) as freq_rank
         FROM prenoms
         WHERE sexe = ${sex} AND periode = ${year}
-        ORDER BY prenom_normalized, valeur DESC
+        ORDER BY ${columnName}, valeur DESC
       `);
       
       const variationsMap = {};
       variationsData.toArray().forEach(row => {
-        const normalized = row.prenom_normalized;
-        if (!variationsMap[normalized]) {
-          variationsMap[normalized] = [];
+        const grouped = row[columnName];
+        if (!variationsMap[grouped]) {
+          variationsMap[grouped] = [];
         }
-        variationsMap[normalized].push({
+        variationsMap[grouped].push({
           name: row.prenom,
           value: Number(row.valeur),
           rank: Number(row.freq_rank)
@@ -664,8 +826,8 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
 
       // Update the data to include variations
       data = data.map(item => {
-        const normalized = item.prenom.toLowerCase();
-        const variations = variationsMap[normalized] || [];
+        const grouped = item.prenom.toLowerCase();
+        const variations = variationsMap[grouped] || [];
         
         if (variations.length > 1) {
           // Sort by frequency (most popular first) and join with "/"

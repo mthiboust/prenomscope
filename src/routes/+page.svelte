@@ -6,7 +6,7 @@
   let years = [];
   let selectedYear = 2024;
   let selectedSex = 1; // 1 = male, 2 = female
-  let groupSimilar = false; // false = exact spelling, true = similar sound
+  let searchMode = 'exact'; // 'exact', 'accent_agnostic', or 'similar'
   let currentPage = 1;
   let itemsPerPage = 50;
   let data = [];
@@ -17,7 +17,7 @@
 
   $: totalPages = Math.ceil(totalItems / itemsPerPage);
   $: sexLabel = selectedSex === 1 ? 'masculins' : 'féminins';
-  $: if (isInitialized && (selectedYear || selectedSex || currentPage || groupSimilar)) saveState(); // Only save after initialization
+  $: if (isInitialized && (selectedYear || selectedSex || currentPage || searchMode)) saveState(); // Only save after initialization
   $: if (data.length > 0 && totalItems > 0) {
     // Ensure current page is valid after data loads
     if (currentPage > totalPages && totalPages > 0) {
@@ -33,7 +33,7 @@
         selectedYear,
         selectedSex,
         currentPage,
-        groupSimilar
+        searchMode
       };
       console.log('Saving state:', state);
       localStorage.setItem('prenomscope-state', JSON.stringify(state));
@@ -51,8 +51,13 @@
           selectedYear = state.selectedYear || 2024;
           selectedSex = state.selectedSex || 1;
           currentPage = state.currentPage || 1;
-          groupSimilar = state.groupSimilar || false;
-          console.log('State loaded - selectedYear:', selectedYear, 'selectedSex:', selectedSex, 'currentPage:', currentPage, 'groupSimilar:', groupSimilar);
+          // Handle migration from old groupSimilar to new searchMode
+          if (state.groupSimilar !== undefined) {
+            searchMode = state.groupSimilar ? 'similar' : 'exact';
+          } else {
+            searchMode = state.searchMode || 'exact';
+          }
+          console.log('State loaded - selectedYear:', selectedYear, 'selectedSex:', selectedSex, 'currentPage:', currentPage, 'searchMode:', searchMode);
         } catch (err) {
           console.error('Error loading saved state:', err);
         }
@@ -97,7 +102,7 @@
     
     try {
       const offset = (currentPage - 1) * itemsPerPage;
-      const result = await getDataBySexYearWithRanking(selectedSex, selectedYear, offset, itemsPerPage, groupSimilar);
+      const result = await getDataBySexYearWithRanking(selectedSex, selectedYear, offset, itemsPerPage, searchMode);
       data = result.data;
       totalItems = result.total;
     } catch (err) {
@@ -121,7 +126,7 @@
     loadData();
   }
 
-  function handleGroupSimilarChange() {
+  function handleSearchModeChange() {
     currentPage = 1;
     saveState();
     loadData();
@@ -207,17 +212,18 @@
     </div>
 
     <div class="filter-group">
-      <label for="group-similar">
+      <label for="search-mode">
         <strong>🔗 Variantes</strong>
       </label>
       <select 
-        id="group-similar"
+        id="search-mode"
         class="select"
-        bind:value={groupSimilar}
-        on:change={handleGroupSimilarChange}
+        bind:value={searchMode}
+        on:change={handleSearchModeChange}
       >
-        <option value={false}>Orthographe exacte</option>
-        <option value={true}>Sonorité similaire</option>
+        <option value="exact">Orthographe exacte</option>
+        <option value="accent_agnostic">Accents ignorés</option>
+        <option value="similar">Sonorité similaire</option>
       </select>
     </div>
   </div>
@@ -276,7 +282,7 @@
               </div>
             </div>
             <div class="name">
-              <a href="{base}/prenom?nom={encodeURIComponent(groupSimilar ? item.prenom.split(' / ')[0] : item.prenom)}" class="name-link">
+              <a href="{base}/prenom?nom={encodeURIComponent(searchMode !== 'exact' ? item.prenom.split(' / ')[0] : item.prenom)}" class="name-link">
                 {item.prenom}
               </a>
             </div>

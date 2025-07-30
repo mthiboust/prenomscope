@@ -6,7 +6,7 @@
 
   let nameQuery = '';
   let selectedName = '';
-  let groupSimilar = false; // New toggle for grouping similar names
+  let searchMode = 'exact'; // 'exact', 'accent_agnostic', or 'similar'
   let selectedSex = null; // null = mixte, 1 = male, 2 = female
   let data = [];
   let suggestions = [];
@@ -16,7 +16,7 @@
   let suggestionTimeout;
 
   $: stats = calculateStats(data);
-  $: if (nameQuery || selectedName || groupSimilar || selectedSex !== null) saveState(); // Save state when relevant variables change
+  $: if (nameQuery || selectedName || searchMode || selectedSex !== null) saveState(); // Save state when relevant variables change
 
   // State persistence functions
   function saveState() {
@@ -24,7 +24,7 @@
       localStorage.setItem('prenomscope-prenom-state', JSON.stringify({
         nameQuery,
         selectedName,
-        groupSimilar,
+        searchMode,
         selectedSex
       }));
     }
@@ -38,7 +38,12 @@
           const state = JSON.parse(saved);
           nameQuery = state.nameQuery || '';
           selectedName = state.selectedName || '';
-          groupSimilar = state.groupSimilar || false;
+          // Handle migration from old groupSimilar to new searchMode
+          if (state.groupSimilar !== undefined) {
+            searchMode = state.groupSimilar ? 'similar' : 'exact';
+          } else {
+            searchMode = state.searchMode || 'exact';
+          }
           selectedSex = state.selectedSex !== undefined ? state.selectedSex : null;
         } catch (err) {
           console.error('Error loading saved state:', err);
@@ -104,7 +109,7 @@
     error = null;
     
     try {
-      data = await getDataByName(name.trim(), groupSimilar);
+      data = await getDataByName(name.trim(), searchMode);
       
       // Filter by sex if selected
       if (selectedSex !== null) {
@@ -141,7 +146,7 @@
       suggestionTimeout = setTimeout(async () => {
         try {
           // For autocomplete, always use individual names (not grouped)
-          suggestions = await searchNamesByPattern(nameQuery, null, null, 20, false);
+          suggestions = await searchNamesByPattern(nameQuery, null, null, 20, 'exact');
           showSuggestions = suggestions.length > 0;
         } catch (err) {
           suggestions = [];
@@ -160,7 +165,7 @@
     showSuggestions = false;
   }
 
-  function handleGroupSimilarChange() {
+  function handleSearchModeChange() {
     if (selectedName) {
       loadNameData(selectedName);
     }
@@ -239,17 +244,18 @@
         </div>
 
         <div class="filter-group">
-          <label for="group-similar-prenom">
+          <label for="search-mode-prenom">
             <strong>🔗 Variantes</strong>
           </label>
           <select 
-            id="group-similar-prenom"
+            id="search-mode-prenom"
             class="select"
-            bind:value={groupSimilar}
-            on:change={handleGroupSimilarChange}
+            bind:value={searchMode}
+            on:change={handleSearchModeChange}
           >
-            <option value={false}>Orthographe exacte</option>
-            <option value={true}>Sonorité similaire</option>
+            <option value="exact">Orthographe exacte</option>
+            <option value="accent_agnostic">Accents ignorés</option>
+            <option value="similar">Sonorité similaire</option>
           </select>
         </div>
       </div>

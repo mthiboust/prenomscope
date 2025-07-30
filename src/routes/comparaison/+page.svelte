@@ -5,7 +5,7 @@
 
   let nameInput = '';
   let selectedNames = [];
-  let groupSimilar = false; // New toggle for grouping similar names
+  let searchMode = 'exact'; // 'exact', 'accent_agnostic', or 'similar'
   let selectedSex = null; // null = mixte, 1 = male, 2 = female
   let data = [];
   let suggestions = [];
@@ -16,14 +16,14 @@
 
   $: comparisonStats = calculateComparisonStats(data);
   $: hasData = selectedNames.length > 0 && data.length > 0;
-  $: if (selectedNames || groupSimilar || selectedSex !== null) saveState(); // Save state whenever relevant variables change
+  $: if (selectedNames || searchMode || selectedSex !== null) saveState(); // Save state whenever relevant variables change
 
   // State persistence functions
   function saveState() {
     if (typeof window !== 'undefined') {
       localStorage.setItem('prenomscope-comparaison-state', JSON.stringify({
         selectedNames,
-        groupSimilar,
+        searchMode,
         selectedSex
       }));
     }
@@ -36,7 +36,12 @@
         try {
           const state = JSON.parse(saved);
           selectedNames = state.selectedNames || [];
-          groupSimilar = state.groupSimilar || false;
+          // Handle migration from old groupSimilar to new searchMode
+          if (state.groupSimilar !== undefined) {
+            searchMode = state.groupSimilar ? 'similar' : 'exact';
+          } else {
+            searchMode = state.searchMode || 'exact';
+          }
           selectedSex = state.selectedSex !== undefined ? state.selectedSex : null;
         } catch (err) {
           console.error('Error loading saved state:', err);
@@ -173,8 +178,8 @@
     error = null;
 
     try {
-      console.log('Loading comparison data for names:', selectedNames, 'groupSimilar:', groupSimilar, 'selectedSex:', selectedSex);
-      data = await getDataByNames(selectedNames, groupSimilar);
+      console.log('Loading comparison data for names:', selectedNames, 'searchMode:', searchMode, 'selectedSex:', selectedSex);
+      data = await getDataByNames(selectedNames, searchMode);
       console.log('Loaded data:', data);
       
       // Filter by sex if selected
@@ -187,11 +192,11 @@
       const namesWithData = [...new Set(data.map(d => d.prenom))];
       console.log('Names with data:', namesWithData);
       
-      // When groupSimilar is true, we need to check differently since the data contains normalized names
+      // When searchMode is not 'exact', we need to check differently since the data contains grouped names
       let missingNames = [];
-      if (groupSimilar) {
-        // For similar sound, we check if any of the input names have data
-        // The data contains normalized names, so we need to check if any data was found
+      if (searchMode !== 'exact') {
+        // For grouped modes, we check if any of the input names have data
+        // The data contains grouped names, so we need to check if any data was found
         if (data.length === 0) {
           missingNames = selectedNames;
         }
@@ -225,7 +230,7 @@
       suggestionTimeout = setTimeout(async () => {
         try {
           // For autocomplete, always use individual names (not grouped)
-          suggestions = await searchNamesByPattern(nameInput, null, null, 20, false);
+          suggestions = await searchNamesByPattern(nameInput, null, null, 20, 'exact');
           // Filter out already selected names
           suggestions = suggestions.filter(s => 
             !selectedNames.some(name => name.toLowerCase() === s.prenom.toLowerCase())
@@ -248,7 +253,7 @@
     addName();
   }
 
-  function handleGroupSimilarChange() {
+  function handleSearchModeChange() {
     if (selectedNames.length > 0) {
       loadComparisonData();
     }
@@ -330,17 +335,18 @@
         </div>
 
         <div class="filter-group">
-          <label for="group-similar-comparaison">
+          <label for="search-mode-comparaison">
             <strong>🔗 Variantes</strong>
           </label>
           <select 
-            id="group-similar-comparaison"
+            id="search-mode-comparaison"
             class="select"
-            bind:value={groupSimilar}
-            on:change={handleGroupSimilarChange}
+            bind:value={searchMode}
+            on:change={handleSearchModeChange}
           >
-            <option value={false}>Orthographe exacte</option>
-            <option value={true}>Sonorité similaire</option>
+            <option value="exact">Orthographe exacte</option>
+            <option value="accent_agnostic">Accents ignorés</option>
+            <option value="similar">Sonorité similaire</option>
           </select>
         </div>
       </div>
@@ -493,30 +499,41 @@
     margin-bottom: 2rem;
   }
 
+  .add-name-section.card {
+    padding: 1.25rem;
+  }
+
   .add-name-container {
     position: relative;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
 
   .filters {
     display: flex;
-    gap: 1rem;
+    gap: 0.75rem;
     flex-wrap: wrap;
+    align-items: end;
   }
 
   .filter-group {
     flex: 1;
-    min-width: 200px;
+    min-width: 180px;
   }
 
   .filter-group label {
     display: block;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.375rem;
     color: #374151;
+    font-size: 0.875rem;
   }
 
   .filter-group .select {
     width: 100%;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .filter-group .input {
+    padding: 0.5rem 0.75rem;
   }
 
   .input-container {
@@ -578,7 +595,7 @@
   }
 
   .selected-names {
-    margin-top: 1rem;
+    margin-top: 0.75rem;
   }
 
   .selected-names-header {
