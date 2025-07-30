@@ -512,7 +512,6 @@
     display: flex;
     gap: 0.75rem;
     flex-wrap: wrap;
-    align-items: end;
   }
 
   .filter-group {
@@ -522,18 +521,16 @@
 
   .filter-group label {
     display: block;
-    margin-bottom: 0.375rem;
+    margin-bottom: 0.5rem;
     color: #374151;
-    font-size: 0.875rem;
   }
 
   .filter-group .select {
     width: 100%;
-    padding: 0.5rem 0.75rem;
   }
 
   .filter-group .input {
-    padding: 0.5rem 0.75rem;
+    width: 100%;
   }
 
   .input-container {

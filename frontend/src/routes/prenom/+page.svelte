@@ -656,6 +656,7 @@
     display: flex;
     gap: 1rem;
     margin-top: 0.5rem;
+    flex-wrap: wrap;
   }
   .example-box {
     background: #f3f4f6;
@@ -707,6 +708,17 @@
 
     .suggestion-count {
       font-size: 0.75rem;
+    }
+
+    .example-groups {
+      gap: 0.5rem;
+    }
+
+    .example-box {
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      flex: 1 1 calc(50% - 0.25rem);
+      min-width: 0;
     }
 
     .stats-grid {
