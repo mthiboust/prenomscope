@@ -121,6 +121,31 @@
     saveState(); // Save state after adding a name
   }
 
+  async function addMultipleNames(names) {
+    const validNames = names.filter(name => {
+      if (selectedNames.includes(name)) {
+        error = `Le prénom "${name}" est déjà dans la comparaison.`;
+        return false;
+      }
+      return true;
+    });
+
+    if (validNames.length === 0) return;
+
+    if (selectedNames.length + validNames.length > 8) {
+      error = 'Vous pouvez comparer au maximum 8 prénoms.';
+      return;
+    }
+
+    selectedNames = [...selectedNames, ...validNames];
+    nameInput = '';
+    showSuggestions = false;
+    error = null;
+
+    await loadComparisonData();
+    saveState(); // Save state after adding names
+  }
+
   function removeName(name) {
     selectedNames = selectedNames.filter(n => n !== name);
     if (selectedNames.length > 0) {
@@ -436,15 +461,20 @@
       
       <div class="example-names">
         <p><strong>💡 Suggestions pour commencer :</strong></p>
-        <div class="example-buttons">
-          {#each ['Marie', 'Pierre', 'Camille', 'Alex', 'Mathew', 'Matthew'] as exampleName}
-            <button 
-              class="btn btn-secondary" 
-              on:click={() => {nameInput = exampleName; addName();}}
-            >
-              {exampleName}
-            </button>
-          {/each}
+        <div class="example-groups">
+          <button 
+            class="example-box" 
+            on:click={() => addMultipleNames(['Louise', 'Jade', 'Ambre'])}
+          >
+            <strong>Louise, Jade, Ambre</strong>
+          </button>
+          
+          <button 
+            class="example-box" 
+            on:click={() => addMultipleNames(['Gabriel', 'Raphaël', 'Louis'])}
+          >
+            <strong>Gabriel, Raphaël, Louis</strong>
+          </button>
         </div>
       </div>
     </div>
@@ -679,10 +709,35 @@
     color: #374151;
   }
 
-  .example-buttons {
+  .example-groups {
     display: flex;
-    gap: 0.5rem;
+    gap: 1rem;
     flex-wrap: wrap;
+  }
+
+  .example-box {
+    flex: 1;
+    min-width: 200px;
+    padding: 1.5rem;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    font-size: 1rem;
+    color: #374151;
+  }
+
+  .example-box:hover {
+    background: #f1f5f9;
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  }
+
+  .example-box strong {
+    color: #1e293b;
   }
 
   .spinner {
@@ -754,8 +809,15 @@
       font-size: 0.875rem;
     }
 
-    .example-buttons {
-      justify-content: center;
+    .example-groups {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .example-box {
+      min-width: auto;
+      padding: 1rem;
+      font-size: 0.875rem;
     }
   }
 </style> 
