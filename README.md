@@ -4,13 +4,13 @@ A French baby names analysis tool based on official INSEE data. Visualize name t
 
 🌐 **Live Website**: [https://mthiboust.github.io/prenomscope/](https://mthiboust.github.io/prenomscope/)
 
-<div style="text-align: center;">
+<p align="center">
   <img src="ranking.png" alt="Name Rankings" width="220" />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
   <img src="details.png" alt="Name Details" width="220" />
   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
   <img src="comparison.png" alt="Name Comparison" width="220" />
-</div>
+</p>
 
 ## About
 
