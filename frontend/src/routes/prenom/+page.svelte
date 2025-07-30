@@ -259,6 +259,50 @@
           </select>
         </div>
       </div>
+
+      {#if !selectedName}
+        <div class="example-names">
+          <p><strong>💡 Suggestions pour commencer :</strong></p>
+          <div class="example-groups">
+            <button 
+              class="example-box" 
+              on:click={() => { nameQuery = 'Louise'; handleSearch(); }}
+            >
+              <strong>Louise</strong>
+            </button>
+            <button 
+              class="example-box" 
+              on:click={() => { nameQuery = 'Jade'; handleSearch(); }}
+            >
+              <strong>Jade</strong>
+            </button>
+            <button 
+              class="example-box" 
+              on:click={() => { nameQuery = 'Ambre'; handleSearch(); }}
+            >
+              <strong>Ambre</strong>
+            </button>
+            <button 
+              class="example-box" 
+              on:click={() => { nameQuery = 'Gabriel'; handleSearch(); }}
+            >
+              <strong>Gabriel</strong>
+            </button>
+            <button 
+              class="example-box" 
+              on:click={() => { nameQuery = 'Raphaël'; handleSearch(); }}
+            >
+              <strong>Raphaël</strong>
+            </button>
+            <button 
+              class="example-box" 
+              on:click={() => { nameQuery = 'Louis'; handleSearch(); }}
+            >
+              <strong>Louis</strong>
+            </button>
+          </div>
+        </div>
+      {/if}
     </div>
   </div>
 
@@ -605,6 +649,26 @@
     color: #64748b;
   }
 
+  .example-names {
+    margin-top: 1.5rem;
+  }
+  .example-groups {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+  .example-box {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background 0.2s;
+  }
+  .example-box:hover {
+    background: #e5e7eb;
+  }
 
 
   @media (max-width: 768px) {
