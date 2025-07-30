@@ -4,15 +4,15 @@
   "description": "Statistiques des prénoms INSEE",
   "start_url": "/prenomscope/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
+  "background_color": "#393B45",
+  "theme_color": "#393B45",
   "orientation": "portrait-primary",
   "icons": [
     {
       "src": "/android_app_icon_512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/android_app_icon_192.png",
