@@ -548,8 +548,8 @@
   }
 
   .page-numbers .btn {
-    min-width: 40px;
-    padding: 0.5rem;
+    min-width: 32px;
+    padding: 0.4rem 0.6rem;
     text-align: center;
     background: #64748b;
     color: white;
@@ -566,8 +566,8 @@
   }
 
   .pagination-controls .btn {
-    min-width: 40px;
-    padding: 0.5rem;
+    min-width: 32px;
+    padding: 0.4rem 0.6rem;
     text-align: center;
     font-weight: bold;
     display: inline-block;
@@ -665,16 +665,15 @@
     }
 
     .pagination-controls {
-      flex-direction: column;
-      gap: 1rem;
+      gap: 0.3rem;
     }
 
     .page-numbers {
-      order: -1;
+      gap: 0.2rem;
     }
   }
 
-  @media (max-width: 480px) {
+  @media (max-width: 360px) {
     .ranking-header,
     .ranking-row {
       grid-template-columns: 25px 120px 1fr 45px;
@@ -700,6 +699,15 @@
 
     .rank {
       font-size: 0.9rem;
+    }
+
+    .pagination-controls {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .page-numbers {
+      order: -1;
     }
   }
 </style> 
