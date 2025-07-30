@@ -250,7 +250,7 @@
         <div class="ranking-header">
           <div class="header-cell">Rang</div>
           <div class="header-delta-section">
-            <div class="header-main">Δ</div>
+            <div class="header-main">Δ Rang</div>
             <div class="delta-group">
               <div class="sub-header">1 an</div>
               <div class="sub-header">5 ans</div>
