@@ -62,6 +62,31 @@
         });
       });
 
+      // Find the year range from all data
+      const allYears = data.map(item => item.periode);
+      const minYear = Math.min(...allYears);
+      const maxYear = Math.max(...allYears);
+
+      // Fill missing years with zeros for each dataset
+      Object.keys(groupedData).forEach(key => {
+        const existingYears = groupedData[key].map(point => point.x);
+        const missingYears = [];
+        
+        for (let year = minYear; year <= maxYear; year++) {
+          if (!existingYears.includes(year)) {
+            missingYears.push(year);
+          }
+        }
+        
+        // Add zero values for missing years
+        missingYears.forEach(year => {
+          groupedData[key].push({
+            x: year,
+            y: 0
+          });
+        });
+      });
+
       const colors = [
         'rgb(59, 130, 246)',   // blue
         'rgb(236, 72, 153)',   // pink
@@ -81,8 +106,8 @@
         borderWidth: 3,
         fill: false,
         tension: 0.4,
-        pointRadius: 4,
-        pointHoverRadius: 6
+        pointRadius: 0,
+        pointHoverRadius: 0
       }));
 
       return { datasets };
@@ -147,7 +172,8 @@
           },
           grid: {
             color: 'rgba(0, 0, 0, 0.1)'
-          }
+          },
+          max: 2024
         },
         y: {
           title: {
