@@ -190,54 +190,36 @@
 
   <div class="search-section card">
     <div class="search-container">
-      <label for="name-input">
-        <strong>🔍 Rechercher un prénom</strong>
-      </label>
-      
-      <div class="input-container">
-        <input
-          id="name-input"
-          type="text"
-          class="input"
-          placeholder="Tapez un prénom (ex: Marie, Pierre...)"
-          bind:value={nameQuery}
-          on:input={handleInputChange}
-          on:keydown={(e) => e.key === 'Enter' && handleSearch()}
-        />
-        
-        <button class="btn" on:click={handleSearch} disabled={!nameQuery.trim()}>
-          Analyser
-        </button>
-
-        {#if showSuggestions && suggestions.length > 0}
-          <div class="suggestions">
-            {#each suggestions.slice(0, 8) as suggestion}
-              <button
-                class="suggestion-item"
-                on:click={() => selectSuggestion(suggestion.prenom)}
-              >
-                <span class="suggestion-name">{suggestion.prenom}</span>
-                <span class="suggestion-count">{formatNumber(suggestion.total_valeur)} naissances</span>
-              </button>
-            {/each}
-          </div>
-        {/if}
-      </div>
-
-      <div class="filters-row">
+      <div class="filters">
         <div class="filter-group">
-          <label for="group-similar-prenom">
-            <strong>🔗 Variantes</strong>
+          <label for="name-input">
+            <strong>🔍 Rechercher un prénom</strong>
           </label>
-          <select 
-            id="group-similar-prenom"
-            class="select"
-            bind:value={groupSimilar}
-            on:change={handleGroupSimilarChange}
-          >
-            <option value={false}>Orthographe exacte</option>
-            <option value={true}>Sonorité similaire</option>
-          </select>
+          <div class="input-container">
+            <input
+              id="name-input"
+              type="text"
+              class="input"
+              placeholder="Tapez un prénom (ex: Marie, Pierre...)"
+              bind:value={nameQuery}
+              on:input={handleInputChange}
+              on:keydown={(e) => e.key === 'Enter' && handleSearch()}
+            />
+
+            {#if showSuggestions && suggestions.length > 0}
+              <div class="suggestions">
+                {#each suggestions.slice(0, 8) as suggestion}
+                  <button
+                    class="suggestion-item"
+                    on:click={() => selectSuggestion(suggestion.prenom)}
+                  >
+                    <span class="suggestion-name">{suggestion.prenom}</span>
+                    <span class="suggestion-count">{formatNumber(suggestion.total_valeur)} naissances</span>
+                  </button>
+                {/each}
+              </div>
+            {/if}
+          </div>
         </div>
 
         <div class="filter-group">
@@ -253,6 +235,21 @@
             <option value={null}>👫 Mixte</option>
             <option value={1}>👦 Masculin</option>
             <option value={2}>👧 Féminin</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="group-similar-prenom">
+            <strong>🔗 Variantes</strong>
+          </label>
+          <select 
+            id="group-similar-prenom"
+            class="select"
+            bind:value={groupSimilar}
+            on:change={handleGroupSimilarChange}
+          >
+            <option value={false}>Orthographe exacte</option>
+            <option value={true}>Sonorité similaire</option>
           </select>
         </div>
       </div>
@@ -380,34 +377,59 @@
     margin-bottom: 2rem;
   }
 
+  .search-container {
+    margin-bottom: 1rem;
+  }
+
   .search-container label {
     display: block;
     margin-bottom: 0.5rem;
     color: #374151;
   }
 
-  .input-container {
+  .filters {
     display: flex;
-    gap: 0.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-group {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .filter-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: #374151;
+  }
+
+  .filter-group .select {
+    width: 100%;
+  }
+
+  .input-container {
     position: relative;
   }
 
   .input-container .input {
-    flex: 1;
+    width: 100%;
   }
 
   .suggestions {
     position: absolute;
     top: 100%;
     left: 0;
-    right: 80px;
+    right: 0;
     background: white;
     border: 1px solid #d1d5db;
     border-radius: 8px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    z-index: 10;
+    z-index: 1000;
     max-height: 300px;
     overflow-y: auto;
+    min-width: 500px;
+    width: 100%;
   }
 
   .suggestion-item {
@@ -577,33 +599,20 @@
     color: #64748b;
   }
 
-  .filters-row {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #e2e8f0;
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-  }
 
-  .filter-group {
-    flex: 1;
-    min-width: 200px;
-  }
-
-  .filter-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: #374151;
-  }
-
-  .filter-group .select {
-    width: 100%;
-  }
 
   @media (max-width: 768px) {
     .page-header h1 {
       font-size: 2rem;
+    }
+
+    .filters {
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .filter-group {
+      min-width: auto;
     }
 
     .input-container {
@@ -612,6 +621,22 @@
 
     .suggestions {
       right: 0;
+      min-width: auto;
+      width: 100%;
+      max-height: 200px;
+      z-index: 1000;
+    }
+
+    .suggestion-item {
+      padding: 1rem 0.75rem;
+    }
+
+    .suggestion-name {
+      font-size: 0.875rem;
+    }
+
+    .suggestion-count {
+      font-size: 0.75rem;
     }
 
     .stats-grid {
