@@ -47,7 +47,7 @@ export async function loadDatabaseFile() {
   try {
     console.log("Loading parquet file with accent-agnostic names...");
     
-    const response = await fetch("./data/names_with_accent_agnostic.parquet");
+    const response = await fetch("./data/names_with_variants.parquet");
     
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -56,11 +56,11 @@ export async function loadDatabaseFile() {
     console.log("Fetched parquet file into ArrayBuffer, size:", buffer.byteLength);
 
     // Register the parquet file using the ArrayBuffer
-    await db.registerFileBuffer('names_with_accent_agnostic.parquet', new Uint8Array(buffer));
+    await db.registerFileBuffer('names_with_variants.parquet', new Uint8Array(buffer));
     console.log("Parquet file registered with DuckDB via buffer.");
 
     // Create a view from the parquet file
-    await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('names_with_accent_agnostic.parquet')");
+    await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('names_with_variants.parquet')");
 
     const debug = await conn.query(`
       SELECT COUNT(*) as total_rows FROM prenoms;
@@ -123,12 +123,12 @@ export async function getDataBySexYear(sex, year, offset = 0, limit = 50, search
         selectClause = 'prenom, valeur, sexe, periode';
         break;
       case 'accent_agnostic':
-        groupByClause = 'prenom_accent_agnostic';
-        selectClause = 'prenom_accent_agnostic as prenom, SUM(valeur) as valeur, sexe, periode';
+        groupByClause = 'prenom_accent_normalized';
+        selectClause = 'prenom_accent_normalized as prenom, SUM(valeur) as valeur, sexe, periode';
         break;
       case 'similar':
-        groupByClause = 'prenom_normalized';
-        selectClause = 'prenom_normalized as prenom, SUM(valeur) as valeur, sexe, periode';
+        groupByClause = 'prenom_phonetic_normalized';
+        selectClause = 'prenom_phonetic_normalized as prenom, SUM(valeur) as valeur, sexe, periode';
         break;
       default:
         groupByClause = 'prenom';
@@ -187,10 +187,10 @@ export async function getDataByNameSexYear(name, sex, year, searchMode = 'exact'
         whereClause = `UPPER(prenom) = UPPER('${name}')`;
         break;
       case 'accent_agnostic':
-        whereClause = `UPPER(prenom_accent_agnostic) = UPPER('${name.toLowerCase()}')`;
+        whereClause = `UPPER(prenom_accent_normalized) = UPPER('${name.toLowerCase()}')`;
         break;
       case 'similar':
-        whereClause = `UPPER(prenom_normalized) = UPPER('${name.toLowerCase()}')`;
+        whereClause = `UPPER(prenom_phonetic_normalized) = UPPER('${name.toLowerCase()}')`;
         break;
       default:
         whereClause = `UPPER(prenom) = UPPER('${name}')`;
@@ -253,10 +253,10 @@ export async function getDataByName(name, searchMode = 'exact') {
         }));
         
       case 'accent_agnostic':
-        // For accent-agnostic, find all variants with the same accent-agnostic version
+        // For accent-agnostic, find all variants with the same accent-normalized version
         query = `
-          WITH target_accent_agnostic AS (
-            SELECT DISTINCT prenom_accent_agnostic
+          WITH target_accent_normalized AS (
+            SELECT DISTINCT prenom_accent_normalized
             FROM prenoms
             WHERE UPPER(prenom) = UPPER('${name}')
           )
@@ -266,16 +266,16 @@ export async function getDataByName(name, searchMode = 'exact') {
             p.sexe,
             p.periode
           FROM prenoms p
-          INNER JOIN target_accent_agnostic ta ON p.prenom_accent_agnostic = ta.prenom_accent_agnostic
+          INNER JOIN target_accent_normalized ta ON p.prenom_accent_normalized = ta.prenom_accent_normalized
           ORDER BY p.prenom, p.periode ASC, p.sexe
         `;
         
-        console.log('Trying to find accent-agnostic version query:', query);
+        console.log('Trying to find accent-normalized version query:', query);
         let accentResult = await conn.query(query);
         let accentData = accentResult.toArray();
-        console.log('Accent-agnostic version search results:', accentData.length);
+        console.log('Accent-normalized version search results:', accentData.length);
         
-        // If no results found, try fuzzy search in accent-agnostic field
+        // If no results found, try fuzzy search in accent-normalized field
         if (accentData.length === 0) {
           query = `
             SELECT 
@@ -284,15 +284,15 @@ export async function getDataByName(name, searchMode = 'exact') {
               p.sexe,
               p.periode
             FROM prenoms p
-            WHERE UPPER(p.prenom_accent_agnostic) LIKE UPPER('%${name.toLowerCase()}%')
+            WHERE UPPER(p.prenom_accent_normalized) LIKE UPPER('%${name.toLowerCase()}%')
             ORDER BY p.prenom, p.periode ASC, p.sexe
             LIMIT 100
           `;
           
-          console.log('Trying fuzzy accent-agnostic search query:', query);
+          console.log('Trying fuzzy accent-normalized search query:', query);
           accentResult = await conn.query(query);
           accentData = accentResult.toArray();
-          console.log('Fuzzy accent-agnostic search results:', accentData.length);
+          console.log('Fuzzy accent-normalized search results:', accentData.length);
         }
         
         console.log('Final data for accent_agnostic:', accentData);
@@ -305,11 +305,11 @@ export async function getDataByName(name, searchMode = 'exact') {
         }));
         
       case 'similar':
-        // For similar sound, find all individual variants of the normalized name
-        // First try to find the normalized version using SQL
+        // For similar sound, find all individual variants of the phonetic-normalized name
+        // First try to find the phonetic-normalized version using SQL
         query = `
-          WITH target_normalized AS (
-            SELECT DISTINCT prenom_normalized
+          WITH target_phonetic_normalized AS (
+            SELECT DISTINCT prenom_phonetic_normalized
             FROM prenoms
             WHERE UPPER(prenom) = UPPER('${name}')
           )
@@ -319,16 +319,16 @@ export async function getDataByName(name, searchMode = 'exact') {
             p.sexe,
             p.periode
           FROM prenoms p
-          INNER JOIN target_normalized tn ON p.prenom_normalized = tn.prenom_normalized
+          INNER JOIN target_phonetic_normalized tn ON p.prenom_phonetic_normalized = tn.prenom_phonetic_normalized
           ORDER BY p.prenom, p.periode ASC, p.sexe
         `;
         
-        console.log('Trying to find normalized version query:', query);
+        console.log('Trying to find phonetic-normalized version query:', query);
         let similarResult = await conn.query(query);
         let similarData = similarResult.toArray();
-        console.log('Normalized version search results:', similarData.length);
+        console.log('Phonetic-normalized version search results:', similarData.length);
         
-        // If no results found, try fuzzy search in normalized field
+        // If no results found, try fuzzy search in phonetic-normalized field
         if (similarData.length === 0) {
           query = `
             SELECT 
@@ -337,15 +337,15 @@ export async function getDataByName(name, searchMode = 'exact') {
               p.sexe,
               p.periode
             FROM prenoms p
-            WHERE UPPER(p.prenom_normalized) LIKE UPPER('%${name.toLowerCase()}%')
+            WHERE UPPER(p.prenom_phonetic_normalized) LIKE UPPER('%${name.toLowerCase()}%')
             ORDER BY p.prenom, p.periode ASC, p.sexe
             LIMIT 100
           `;
           
-          console.log('Trying fuzzy normalized search query:', query);
+          console.log('Trying fuzzy phonetic-normalized search query:', query);
           similarResult = await conn.query(query);
           similarData = similarResult.toArray();
-          console.log('Fuzzy normalized search results:', similarData.length);
+          console.log('Fuzzy phonetic-normalized search results:', similarData.length);
         }
         
         console.log('Final data for similar:', similarData);
@@ -395,48 +395,48 @@ export async function getDataByNames(names, searchMode = 'exact') {
         break;
         
       case 'accent_agnostic':
-        // For accent-agnostic, we need to find names that match the accent-agnostic versions
+        // For accent-agnostic, we need to find names that match the accent-normalized versions
         upperNames = names.map(name => `'${name.toUpperCase()}'`);
         namesList = upperNames.join(',');
         
         query = `
-          WITH target_accent_agnostic AS (
-            SELECT DISTINCT prenom_accent_agnostic
+          WITH target_accent_normalized AS (
+            SELECT DISTINCT prenom_accent_normalized
             FROM prenoms
             WHERE prenom IN (${namesList})
           )
           SELECT 
-            p.prenom_accent_agnostic as prenom,
+            p.prenom_accent_normalized as prenom,
             SUM(p.valeur) as valeur,
             p.sexe,
             p.periode
           FROM prenoms p
-          INNER JOIN target_accent_agnostic ta ON p.prenom_accent_agnostic = ta.prenom_accent_agnostic
-          GROUP BY p.prenom_accent_agnostic, p.sexe, p.periode
-          ORDER BY p.prenom_accent_agnostic, p.periode ASC, p.sexe
+          INNER JOIN target_accent_normalized ta ON p.prenom_accent_normalized = ta.prenom_accent_normalized
+          GROUP BY p.prenom_accent_normalized, p.sexe, p.periode
+          ORDER BY p.prenom_accent_normalized, p.periode ASC, p.sexe
         `;
         break;
         
       case 'similar':
-        // For similar sound, we need to find names that match the normalized versions
+        // For similar sound, we need to find names that match the phonetic-normalized versions
         upperNames = names.map(name => `'${name.toUpperCase()}'`);
         namesList = upperNames.join(',');
         
         query = `
-          WITH target_normalized AS (
-            SELECT DISTINCT prenom_normalized
+          WITH target_phonetic_normalized AS (
+            SELECT DISTINCT prenom_phonetic_normalized
             FROM prenoms
             WHERE prenom IN (${namesList})
           )
           SELECT 
-            p.prenom_normalized as prenom,
+            p.prenom_phonetic_normalized as prenom,
             SUM(p.valeur) as valeur,
             p.sexe,
             p.periode
           FROM prenoms p
-          INNER JOIN target_normalized tn ON p.prenom_normalized = tn.prenom_normalized
-          GROUP BY p.prenom_normalized, p.sexe, p.periode
-          ORDER BY p.prenom_normalized, p.periode ASC, p.sexe
+          INNER JOIN target_phonetic_normalized tn ON p.prenom_phonetic_normalized = tn.prenom_phonetic_normalized
+          GROUP BY p.prenom_phonetic_normalized, p.sexe, p.periode
+          ORDER BY p.prenom_phonetic_normalized, p.periode ASC, p.sexe
         `;
         break;
         
@@ -465,7 +465,7 @@ export async function getDataByNames(names, searchMode = 'exact') {
       const groupedNamesList = groupedNames.map(name => `'${name}'`).join(',');
       
       if (groupedNamesList) {
-        const columnName = searchMode === 'accent_agnostic' ? 'prenom_accent_agnostic' : 'prenom_normalized';
+        const columnName = searchMode === 'accent_agnostic' ? 'prenom_accent_normalized' : 'prenom_phonetic_normalized';
         
         const variationsData = await conn.query(`
           SELECT 
@@ -569,31 +569,31 @@ export async function searchNamesByPattern(pattern, year = null, sex = null, lim
         break;
         
       case 'accent_agnostic':
-        groupByClause = 'prenom_accent_agnostic';
-        selectClause = 'prenom_accent_agnostic as prenom, SUM(valeur) as total_valeur';
-        // Normalize the pattern for accent-agnostic search
-        const accentAgnosticPattern = pattern.toLowerCase()
+        groupByClause = 'prenom_accent_normalized';
+        selectClause = 'prenom_accent_normalized as prenom, SUM(valeur) as total_valeur';
+        // Normalize the pattern for accent-normalized search
+        const accentNormalizedPattern = pattern.toLowerCase()
           .replace(/[éèêë]/g, 'e')
           .replace(/[àâä]/g, 'a')
           .replace(/[îï]/g, 'i')
           .replace(/[ôö]/g, 'o')
           .replace(/[ûüù]/g, 'u')
           .replace(/[ç]/g, 'c');
-        whereClause = `UPPER(prenom_accent_agnostic) LIKE UPPER('%${accentAgnosticPattern}%')`;
+        whereClause = `UPPER(prenom_accent_normalized) LIKE UPPER('%${accentNormalizedPattern}%')`;
         break;
         
       case 'similar':
-        groupByClause = 'prenom_normalized';
-        selectClause = 'prenom_normalized as prenom, SUM(valeur) as total_valeur';
-        // Normalize the pattern for similar sound search
-        const normalizedPattern = pattern.toLowerCase()
+        groupByClause = 'prenom_phonetic_normalized';
+        selectClause = 'prenom_phonetic_normalized as prenom, SUM(valeur) as total_valeur';
+        // Normalize the pattern for phonetic-normalized search
+        const phoneticNormalizedPattern = pattern.toLowerCase()
           .replace(/[éèêë]/g, 'e')
           .replace(/[àâä]/g, 'a')
           .replace(/[îï]/g, 'i')
           .replace(/[ôö]/g, 'o')
           .replace(/[ûüù]/g, 'u')
           .replace(/[ç]/g, 'c');
-        whereClause = `UPPER(prenom_normalized) LIKE UPPER('%${normalizedPattern}%')`;
+        whereClause = `UPPER(prenom_phonetic_normalized) LIKE UPPER('%${phoneticNormalizedPattern}%')`;
         break;
         
       default:
@@ -629,7 +629,7 @@ export async function searchNamesByPattern(pattern, year = null, sex = null, lim
       const groupedNamesList = groupedNames.map(name => `'${name}'`).join(',');
       
       if (groupedNamesList) {
-        const columnName = searchMode === 'accent_agnostic' ? 'prenom_accent_agnostic' : 'prenom_normalized';
+        const columnName = searchMode === 'accent_agnostic' ? 'prenom_accent_normalized' : 'prenom_phonetic_normalized';
         
         const variationsData = await conn.query(`
           SELECT 
@@ -713,12 +713,12 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
         selectClause = 'prenom, valeur, sexe, periode';
         break;
       case 'accent_agnostic':
-        groupByClause = 'prenom_accent_agnostic';
-        selectClause = 'prenom_accent_agnostic as prenom, SUM(valeur) as valeur, sexe, periode';
+        groupByClause = 'prenom_accent_normalized';
+        selectClause = 'prenom_accent_normalized as prenom, SUM(valeur) as valeur, sexe, periode';
         break;
       case 'similar':
-        groupByClause = 'prenom_normalized';
-        selectClause = 'prenom_normalized as prenom, SUM(valeur) as valeur, sexe, periode';
+        groupByClause = 'prenom_phonetic_normalized';
+        selectClause = 'prenom_phonetic_normalized as prenom, SUM(valeur) as valeur, sexe, periode';
         break;
       default:
         groupByClause = 'prenom';
@@ -798,7 +798,7 @@ export async function getDataBySexYearWithRanking(sex, year, offset = 0, limit =
 
     // If grouping is enabled, get the variations for each grouped name
     if (searchMode !== 'exact') {
-      const columnName = searchMode === 'accent_agnostic' ? 'prenom_accent_agnostic' : 'prenom_normalized';
+      const columnName = searchMode === 'accent_agnostic' ? 'prenom_accent_normalized' : 'prenom_phonetic_normalized';
       
       const variationsData = await conn.query(`
         SELECT 
