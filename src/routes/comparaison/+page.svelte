@@ -272,6 +272,20 @@
         <button class="btn" on:click={addName} disabled={!nameInput.trim()}>
           Ajouter
         </button>
+
+        {#if showSuggestions && suggestions.length > 0}
+          <div class="suggestions">
+            {#each suggestions.slice(0, 8) as suggestion}
+              <button
+                class="suggestion-item"
+                on:click={() => selectSuggestion(suggestion.prenom)}
+              >
+                <span class="suggestion-name">{suggestion.prenom}</span>
+                <span class="suggestion-count">{formatNumber(suggestion.total_valeur)} naissances</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
       </div>
 
       <div class="filters-row">
@@ -306,20 +320,6 @@
           </select>
         </div>
       </div>
-
-      {#if showSuggestions && suggestions.length > 0}
-        <div class="suggestions">
-          {#each suggestions.slice(0, 8) as suggestion}
-            <button
-              class="suggestion-item"
-              on:click={() => selectSuggestion(suggestion.prenom)}
-            >
-              <span class="suggestion-name">{suggestion.prenom}</span>
-              <span class="suggestion-count">{formatNumber(suggestion.total_valeur)} naissances</span>
-            </button>
-          {/each}
-        </div>
-      {/if}
     </div>
 
     {#if selectedNames.length > 0}
@@ -478,6 +478,7 @@
     display: flex;
     gap: 0.5rem;
     margin-bottom: 1rem;
+    position: relative;
   }
 
   .input-container .input {
@@ -486,7 +487,7 @@
 
   .suggestions {
     position: absolute;
-    top: calc(100% - 1rem);
+    top: 100%;
     left: 0;
     right: 80px;
     background: white;
