@@ -4,6 +4,14 @@ A French baby names analysis tool based on official INSEE data. Visualize name t
 
 🌐 **Live Website**: [https://mthiboust.github.io/prenomscope/](https://mthiboust.github.io/prenomscope/)
 
+<div style="text-align: center;">
+  <img src="ranking.png" alt="Name Rankings" width="220" />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="details.png" alt="Name Details" width="220" />
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="comparison.png" alt="Name Comparison" width="220" />
+</div>
+
 ## About
 
 PrénomScope is a vibe-coding experiment that makes French baby names data more accessible and visual. It transforms raw INSEE (French National Institute of Statistics) data into an interactive web application for exploring name trends and statistics.
@@ -17,6 +25,8 @@ The project was created as a fun experiment to learn modern web development whil
 - ⚖️ **Name Comparison**: Compare multiple names side by side
 - 🔗 **Name Grouping**: Group similar names together for better analysis
 - 📱 **Responsive Design**: Works on desktop and mobile
+
+
 
 ## Technologies Used
 
