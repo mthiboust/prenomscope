@@ -47,7 +47,7 @@ export async function loadDatabaseFile() {
   try {
     console.log("Loading parquet file with accent-agnostic names...");
     
-    const response = await fetch("./data/names_with_variants.parquet");
+    const response = await fetch("./data.parquet");
     
     if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -56,11 +56,11 @@ export async function loadDatabaseFile() {
     console.log("Fetched parquet file into ArrayBuffer, size:", buffer.byteLength);
 
     // Register the parquet file using the ArrayBuffer
-    await db.registerFileBuffer('names_with_variants.parquet', new Uint8Array(buffer));
+    await db.registerFileBuffer('data.parquet', new Uint8Array(buffer));
     console.log("Parquet file registered with DuckDB via buffer.");
 
     // Create a view from the parquet file
-    await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('names_with_variants.parquet')");
+    await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('data.parquet')");
 
     const debug = await conn.query(`
       SELECT COUNT(*) as total_rows FROM prenoms;

@@ -187,14 +187,14 @@ def main():
     parser.add_argument(
         "--input",
         "-i",
-        default="static/data/names.parquet",
-        help="Input parquet file path (default: static/data/names.parquet)",
+        default="./names.parquet",
+        help="Input parquet file path (default: ./names.parquet)",
     )
     parser.add_argument(
         "--output",
         "-o",
-        default="static/data/names_with_variants.parquet",
-        help="Output parquet file path (default: static/data/names_with_variants.parquet)",
+        default="../frontend/static/data.parquet",
+        help="Output parquet file path (default: ../frontend/static/data.parquet)",
     )
 
     args = parser.parse_args()

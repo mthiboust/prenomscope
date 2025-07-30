@@ -26,22 +26,25 @@ jobs:
         with:
           node-version: "18"
           cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
+        working-directory: frontend
         run: npm ci
 
       - name: Build
+        working-directory: frontend
         run: npm run build
         env:
           NODE_ENV: production
 
       - name: Add .nojekyll file
-        run: touch build/.nojekyll
+        run: touch frontend/build/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./build
+          path: ./frontend/build
 
   deploy:
     environment:
