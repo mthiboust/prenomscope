@@ -5,8 +5,33 @@
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		
+		<!-- SEO Meta Tags -->
+		<meta name="author" content="PrénomScope" />
+		<meta name="language" content="fr" />
+		
+		<!-- Open Graph / Facebook -->
 
-		<!-- Android Theme -->
+		<meta property="og:title" content="PrénomScope - Statistiques des prénoms français">
+		<meta property="og:type" content="website">
+		<meta property="og:site_name" content="PrénomScope - Statistiques des prénoms français">
+		<meta property="og:image" itemprop="image" content="%sveltekit.assets%/card.png">
+		<meta property="og:description"
+			content="Statistiques officielles des prénoms français basées sur les données INSEE. Découvrez les prénoms les plus populaires, leur évolution et analysez les tendances.">
+		<meta property="og:url" content="https://mthiboust.github.io/prenomscope/">
+		<meta property="og:updated_time" content="2025-07-31T00:13:00+02:00">
+
+		<!-- Twitter Card -->
+		<meta name="twitter:card" content="summary_large_image">
+		<meta name="twitter:title" content="PrénomScope - Statistiques des prénoms français">
+		<meta name="twitter:creator" content="@mthiboust">
+		<meta name="twitter:site" content="@mthiboust">
+		<meta name="twitter:description"
+			content="Statistiques officielles des prénoms français basées sur les données INSEE. Découvrez les prénoms les plus populaires, leur évolution et analysez les tendances.">
+		<meta name="twitter:image" content="https://mthiboust.github.io/prenomscope/card.png">
+		<meta name="twitter:image:alt" content="PrénomScope - Statistiques des prénoms français">
+
+		<!-- Additional SEO -->
+		<link rel="canonical" href="%sveltekit.url%" />
 		<meta name="theme-color" content="#393B45" />
 		<meta name="msapplication-TileColor" content="#393B45" />
 		
@@ -21,6 +46,18 @@
 		
 		<!-- Web App Manifest -->
 		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
+		
+		<!-- Structured Data -->
+		<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "WebSite",
+			"name": "PrénomScope",
+			"description": "Statistiques des prénoms français basées sur les données officielles de l'INSEE",
+			"url": "https://mthiboust.github.io/prenomscope/",
+			"inLanguage": "fr-FR"
+		}
+		</script>
 		
 		<title>PrénomScope - Statistiques des prénoms INSEE</title>
 		%sveltekit.head%

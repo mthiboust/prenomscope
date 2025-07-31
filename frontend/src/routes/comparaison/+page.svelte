@@ -279,7 +279,36 @@
 </script>
 
 <svelte:head>
-  <title>Comparaison de prénoms - PrénomScope</title>
+  <title>Comparaison de prénoms français - Analyse comparative | PrénomScope</title>
+  <meta name="description" content="Comparez plusieurs prénoms français et analysez leur évolution dans le temps. Outil de comparaison des statistiques de naissances basé sur les données INSEE." />
+  <meta name="keywords" content="comparaison prénoms, analyse prénoms, évolution prénoms, statistiques comparatives, prénoms français, graphiques prénoms" />
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Comparaison de prénoms français - Analyse comparative | PrénomScope" />
+  <meta property="og:description" content="Comparez plusieurs prénoms français et analysez leur évolution dans le temps. Outil de comparaison des statistiques de naissances basé sur les données INSEE." />
+  <meta property="og:url" content="%sveltekit.url%" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:title" content="Comparaison de prénoms français - Analyse comparative | PrénomScope" />
+  <meta name="twitter:description" content="Comparez plusieurs prénoms français et analysez leur évolution dans le temps. Outil de comparaison des statistiques de naissances basé sur les données INSEE." />
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Comparaison de prénoms français",
+    "description": "Outil de comparaison et d'analyse des prénoms français basé sur les données INSEE",
+    "url": "%sveltekit.url%",
+    "mainEntity": {
+      "@type": "Organization",
+      "name": "PrénomScope",
+      "description": "Outil d'analyse des prénoms français basé sur les données officielles de l'INSEE",
+      "url": "https://mthiboust.github.io/prenomscope/",
+      "sameAs": "https://github.com/mthiboust/prenomscope"
+    }
+  }
+  </script>
 </svelte:head>
 
 <div class="page">

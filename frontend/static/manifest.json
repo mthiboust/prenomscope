@@ -1,7 +1,7 @@
 {
-  "name": "PrénomScope",
+  "name": "PrénomScope - Statistiques des prénoms français",
   "short_name": "Prénoms",
-  "description": "Statistiques des prénoms INSEE",
+  "description": "Statistiques officielles des prénoms français basées sur les données INSEE. Découvrez les prénoms les plus populaires et leur évolution.",
   "start_url": "/prenomscope/",
   "display": "standalone",
   "background_color": "#393B45",

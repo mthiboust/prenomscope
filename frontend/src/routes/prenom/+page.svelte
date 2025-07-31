@@ -188,7 +188,36 @@
 </script>
 
 <svelte:head>
-  <title>Détails du prénom {selectedName || ''} - PrénomScope</title>
+  <title>{selectedName ? `Prénom ${selectedName} - Statistiques et évolution` : 'Recherche de prénoms français'} | PrénomScope</title>
+  <meta name="description" content="Recherchez et analysez les statistiques de prénoms français" />
+  <meta name="keywords" content="prénoms, statistiques, évolution, recherche prénoms, statistiques prénoms, prénoms français, données INSEE" />
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Statistique d'un prénom | PrénomScope" />
+  <meta property="og:description" content="Recherchez et analysez les statistiques de prénoms français" />
+  <meta property="og:url" content="%sveltekit.url%" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:title" content="Statistique d'un prénom | PrénomScope" />
+  <meta name="twitter:description" content="Recherchez et analysez les statistiques de prénoms français" />
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Statistique d'un prénom | PrénomScope",
+    "description": "Recherchez et analysez les statistiques de prénoms français",
+    "url": "%sveltekit.url%",
+    "mainEntity": {
+      "@type": "Organization",
+      "name": "PrénomScope",
+      "description": "Recherchez et analysez les statistiques de prénoms français",
+      "url": "https://mthiboust.github.io/prenomscope/",
+      "sameAs": "https://github.com/mthiboust/prenomscope"
+    }
+  }
+  </script>
 </svelte:head>
 
 <div class="page">

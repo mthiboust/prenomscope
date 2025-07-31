@@ -3,8 +3,36 @@
 </script>
 
 <svelte:head>
-  <title>À propos - PrénomScope</title>
-  <meta name="description" content="Informations sur les données des prénoms français et leur source INSEE" />
+  <title>À propos - Informations sur les données des prénoms français | PrénomScope</title>
+  <meta name="description" content="Découvrez la source des données des prénoms français, la méthodologie INSEE et les informations détaillées sur les statistiques de naissances en France." />
+  <meta name="keywords" content="données prénoms, INSEE, méthodologie, statistiques naissances, source données, prénoms français" />
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="À propos - Informations sur les données des prénoms français | PrénomScope" />
+  <meta property="og:description" content="Découvrez la source des données des prénoms français, la méthodologie INSEE et les informations détaillées sur les statistiques de naissances en France." />
+  <meta property="og:url" content="%sveltekit.url%" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:title" content="À propos - Informations sur les données des prénoms français | PrénomScope" />
+  <meta name="twitter:description" content="Découvrez la source des données des prénoms français, la méthodologie INSEE et les informations détaillées sur les statistiques de naissances en France." />
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "AboutPage",
+    "name": "À propos de PrénomScope",
+    "description": "Informations sur la source des données des prénoms français et la méthodologie INSEE",
+    "url": "%sveltekit.url%",
+    "mainEntity": {
+      "@type": "Organization",
+      "name": "PrénomScope",
+      "description": "Outil d'analyse des prénoms français basé sur les données officielles de l'INSEE",
+      "url": "https://mthiboust.github.io/prenomscope/",
+      "sameAs": "https://github.com/mthiboust/prenomscope"
+    }
+  }
+  </script>
 </svelte:head>
 
 <div class="about-page">

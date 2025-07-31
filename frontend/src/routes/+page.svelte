@@ -174,7 +174,36 @@
 </script>
 
 <svelte:head>
-  <title>Classements des prénoms - PrénomScope</title>
+  <title>Classements des prénoms français 2024 - Statistiques INSEE | PrénomScope</title>
+  <meta name="description" content="Découvrez les prénoms les plus populaires en France en 2024. Classements officiels des prénoms masculins et féminins basés sur les données INSEE. Statistiques détaillées et évolution des tendances." />
+  <meta name="keywords" content="prénoms français, classement prénoms, prénoms populaires, statistiques prénoms, INSEE, prénoms 2024, prénoms garçons, prénoms filles, tendances prénoms" />
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Classements des prénoms français 2024 - PrénomScope" />
+  <meta property="og:description" content="Découvrez les prénoms les plus populaires en France en 2024. Classements officiels basés sur les données INSEE." />
+  <meta property="og:url" content="%sveltekit.url%" />
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:title" content="Classements des prénoms français 2024 - PrénomScope" />
+  <meta name="twitter:description" content="Découvrez les prénoms les plus populaires en France en 2024. Classements officiels basés sur les données INSEE." />
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Classements des prénoms français 2024",
+    "description": "Découvrez les prénoms les plus populaires en France en 2024. Classements officiels des prénoms masculins et féminins basés sur les données INSEE.",
+    "url": "%sveltekit.url%",
+    "mainEntity": {
+      "@type": "Organization",
+      "name": "PrénomScope",
+      "description": "Outil d'analyse des prénoms français basé sur les données officielles de l'INSEE",
+      "url": "https://mthiboust.github.io/prenomscope/",
+      "sameAs": "https://github.com/mthiboust/prenomscope"
+    }
+  }
+  </script>
 </svelte:head>
 
 <div class="page">

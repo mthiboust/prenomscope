@@ -34,7 +34,16 @@
 </script>
 
 <svelte:head>
-  <meta name="description" content="Analyse des prénoms français basée sur les données INSEE" />
+  <meta name="description" content="Statistiques officielles des prénoms français basées sur les données INSEE. Découvrez les prénoms les plus populaires, leur évolution et analysez les tendances." />
+  <meta name="keywords" content="prénoms français, statistiques prénoms, INSEE, classement prénoms, prénoms populaires, évolution prénoms, données naissances, gabriel, raphaël, louis, louise, jade, ambre" />
+  <meta name="author" content="Matthieu Thiboust" />
+  <meta name="copyright" content="© 2025 Matthieu Thiboust" />
+  
+  <!-- Additional SEO -->
+  <meta name="application-name" content="PrénomScope" />
+  <meta name="apple-mobile-web-app-title" content="PrénomScope" />
+  <meta name="msapplication-TileColor" content="#393B45" />
+
 </svelte:head>
 
 <div class="app">
