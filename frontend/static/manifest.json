@@ -1,6 +1,6 @@
 {
   "name": "PrénomScope",
-  "short_name": "PrénomScope",
+  "short_name": "Prénoms",
   "description": "Statistiques des prénoms INSEE",
   "start_url": "/prenomscope/",
   "display": "standalone",
