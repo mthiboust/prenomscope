@@ -59,8 +59,16 @@ export async function loadDatabaseFile() {
     await db.registerFileBuffer('data.parquet', new Uint8Array(buffer));
     console.log("Parquet file registered with DuckDB via buffer.");
 
-    // Create a view from the parquet file
-    await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('data.parquet')");
+    // Create a view from the parquet file (only if it doesn't exist)
+    try {
+      await conn.query("CREATE VIEW prenoms AS SELECT * FROM read_parquet('data.parquet')");
+    } catch (err) {
+      if (err.message.includes('already exists')) {
+        console.log("View 'prenoms' already exists, skipping creation");
+      } else {
+        throw err;
+      }
+    }
 
     const debug = await conn.query(`
       SELECT COUNT(*) as total_rows FROM prenoms;
@@ -706,6 +714,160 @@ export async function searchNamesByPattern(pattern, year = null, sex = null, lim
     return data;
   } catch (err) {
     console.error("Error searching names by pattern:", err);
+    throw err;
+  }
+}
+
+/**
+ * Get ranking data for a specific name across all years
+ * @param {string} name - The name to search for
+ * @param {string} searchMode - Search mode: 'exact', 'accent_agnostic', or 'similar'
+ * @returns {Promise<Array>} Array of ranking records for the name
+ */
+export async function getRankingDataByName(name, searchMode = 'exact') {
+  await ensureDatabase();
+  
+  try {
+    console.log('getRankingDataByName called with:', { name, searchMode });
+    
+    let query;
+    
+    switch (searchMode) {
+      case 'exact':
+        // For exact spelling, use the original name
+        query = `
+          WITH name_data AS (
+            SELECT prenom, valeur, sexe, periode
+            FROM prenoms
+            WHERE UPPER(prenom) = UPPER('${name}')
+          ),
+          yearly_rankings AS (
+            SELECT 
+              periode,
+              sexe,
+              prenom,
+              valeur,
+              ROW_NUMBER() OVER (PARTITION BY periode, sexe ORDER BY valeur DESC) as rank
+            FROM prenoms
+          )
+          SELECT 
+            nd.prenom,
+            nd.valeur,
+            nd.sexe,
+            nd.periode,
+            yr.rank
+          FROM name_data nd
+          LEFT JOIN yearly_rankings yr ON 
+            nd.prenom = yr.prenom AND 
+            nd.sexe = yr.sexe AND 
+            nd.periode = yr.periode
+          ORDER BY nd.periode ASC, nd.sexe
+        `;
+        break;
+        
+      case 'accent_agnostic':
+        // For accent-agnostic, find all variants with the same accent-normalized version
+        // Return individual rankings for each variant, not grouped
+        query = `
+          WITH target_accent_normalized AS (
+            SELECT DISTINCT prenom_accent_normalized
+            FROM prenoms
+            WHERE UPPER(prenom) = UPPER('${name}')
+          ),
+          name_data AS (
+            SELECT 
+              p.prenom,
+              p.valeur,
+              p.sexe,
+              p.periode
+            FROM prenoms p
+            INNER JOIN target_accent_normalized ta ON p.prenom_accent_normalized = ta.prenom_accent_normalized
+          ),
+          yearly_rankings AS (
+            SELECT 
+              periode,
+              sexe,
+              prenom,
+              valeur,
+              ROW_NUMBER() OVER (PARTITION BY periode, sexe ORDER BY valeur DESC) as rank
+            FROM prenoms
+          )
+          SELECT 
+            nd.prenom,
+            nd.valeur,
+            nd.sexe,
+            nd.periode,
+            yr.rank
+          FROM name_data nd
+          LEFT JOIN yearly_rankings yr ON 
+            nd.prenom = yr.prenom AND 
+            nd.sexe = yr.sexe AND 
+            nd.periode = yr.periode
+          ORDER BY nd.periode ASC, nd.sexe, nd.prenom
+        `;
+        break;
+        
+      case 'similar':
+        // For similar sound, find all individual variants of the phonetic-normalized name
+        // Return individual rankings for each variant, not grouped
+        query = `
+          WITH target_phonetic_normalized AS (
+            SELECT DISTINCT prenom_phonetic_normalized
+            FROM prenoms
+            WHERE UPPER(prenom) = UPPER('${name}')
+          ),
+          name_data AS (
+            SELECT 
+              p.prenom,
+              p.valeur,
+              p.sexe,
+              p.periode
+            FROM prenoms p
+            INNER JOIN target_phonetic_normalized tn ON p.prenom_phonetic_normalized = tn.prenom_phonetic_normalized
+          ),
+          yearly_rankings AS (
+            SELECT 
+              periode,
+              sexe,
+              prenom,
+              valeur,
+              ROW_NUMBER() OVER (PARTITION BY periode, sexe ORDER BY valeur DESC) as rank
+            FROM prenoms
+          )
+          SELECT 
+            nd.prenom,
+            nd.valeur,
+            nd.sexe,
+            nd.periode,
+            yr.rank
+          FROM name_data nd
+          LEFT JOIN yearly_rankings yr ON 
+            nd.prenom = yr.prenom AND 
+            nd.sexe = yr.sexe AND 
+            nd.periode = yr.periode
+          ORDER BY nd.periode ASC, nd.sexe, nd.prenom
+        `;
+        break;
+        
+      default:
+        throw new Error(`Invalid search mode: ${searchMode}`);
+    }
+    
+    console.log('getRankingDataByName query:', query);
+    const result = await conn.query(query);
+    const data = result.toArray();
+    console.log('getRankingDataByName results:', data.length);
+    
+    return data.map(row => ({
+      ...row,
+      prenom: formatName(row.prenom),
+      valeur: Number(row.valeur),
+      sexe: Number(row.sexe),
+      periode: Number(row.periode),
+      rank: Number(row.rank)
+    }));
+  } catch (err) {
+    console.error("Error getting ranking data by name:", err);
     throw err;
   }
 }

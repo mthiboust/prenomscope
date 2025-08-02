@@ -4,7 +4,6 @@
 
   export let data = [];
   export let title = '';
-  export let type = 'line';
   export let height = 400;
 
   let chartContainer;
@@ -33,7 +32,7 @@
     const ctx = chartContainer.getContext('2d');
     
     chart = new Chart(ctx, {
-      type,
+      type: 'line',
       data: getChartData(),
       options: getChartOptions()
     });
@@ -47,7 +46,7 @@
   }
 
   function getChartData() {
-    if (type === 'line' && data.length > 0) {
+    if (data.length > 0) {
       // Group data by name and sex
       const groupedData = {};
       
@@ -58,7 +57,7 @@
         }
         groupedData[key].push({
           x: item.periode,
-          y: item.valeur
+          y: item.rank
         });
       });
 
@@ -67,7 +66,16 @@
       const minYear = Math.min(...allYears);
       const maxYear = Math.max(...allYears);
 
-      // Fill missing years with zeros for each dataset
+      // Calculate the worst ranking across all curves
+      let globalMaxRank = 1;
+      Object.values(groupedData).forEach(points => {
+        const maxRank = Math.max(...points.map(point => point.y));
+        if (maxRank > globalMaxRank) {
+          globalMaxRank = maxRank;
+        }
+      });
+      
+      // Fill missing years with the global worst ranking
       Object.keys(groupedData).forEach(key => {
         const existingYears = groupedData[key].map(point => point.x);
         const missingYears = [];
@@ -78,15 +86,16 @@
           }
         }
         
-        // Add zero values for missing years
+        // Add the global worst ranking for missing years
         missingYears.forEach(year => {
           groupedData[key].push({
             x: year,
-            y: 0
+            y: globalMaxRank
           });
         });
       });
 
+      // Use the same colors as the main Chart component
       const colors = [
         'rgb(59, 130, 246)',   // blue
         'rgb(236, 72, 153)',   // pink
@@ -112,7 +121,8 @@
         fill: false,
         tension: 0.4,
         pointRadius: 0,
-        pointHoverRadius: 0
+        pointHoverRadius: 0,
+        spanGaps: true
       }));
 
       return { datasets };
@@ -159,7 +169,11 @@
               return `Année ${tooltipItems[0].parsed.x}`;
             },
             label: function(context) {
-              return `${context.dataset.label}: ${new Intl.NumberFormat('fr-FR').format(context.parsed.y)} naissances`;
+              const rank = context.parsed.y;
+              if (rank === null) return `${context.dataset.label}: Pas de données`;
+              // For logarithmic scale, we need to ensure we get the actual rank value
+              const actualRank = Math.round(rank);
+              return `${context.dataset.label}: ${actualRank}${getOrdinalSuffix(actualRank)}`;
             }
           }
         }
@@ -181,9 +195,12 @@
           max: 2024
         },
         y: {
+          type: 'logarithmic',
+          reverse: true, // Invert Y-axis so lower numbers (better ranks) are at the top
+          min: 1, // Always show rank 1
           title: {
             display: true,
-            text: 'Nombre de naissances',
+            text: 'Classement',
             font: {
               weight: 'bold'
             }
@@ -193,12 +210,20 @@
           },
           ticks: {
             callback: function(value) {
-              return new Intl.NumberFormat('fr-FR').format(value);
+              if (value === 0) return '';
+              const rank = Math.round(value);
+              return rank + getOrdinalSuffix(rank);
             }
           }
         }
       }
     };
+  }
+
+  function getOrdinalSuffix(num) {
+    if (num === 1) return 'er';
+    if (num === 2) return 'e';
+    return 'e';
   }
 </script>
 

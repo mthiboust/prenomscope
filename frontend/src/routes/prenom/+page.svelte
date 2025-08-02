@@ -1,14 +1,16 @@
 <script>
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
-  import { getDataByName, searchNamesByPattern } from '$lib/data.js';
+  import { getDataByName, getRankingDataByName, searchNamesByPattern } from '$lib/data.js';
   import Chart from '$lib/components/Chart.svelte';
+  import RankingChart from '$lib/components/RankingChart.svelte';
 
   let nameQuery = '';
   let selectedName = '';
   let searchMode = 'exact'; // 'exact', 'accent_agnostic', or 'similar'
   let selectedSex = null; // null = mixte, 1 = male, 2 = female
   let data = [];
+  let rankingData = [];
   let suggestions = [];
   let loading = false;
   let error = null;
@@ -109,11 +111,19 @@
     error = null;
     
     try {
-      data = await getDataByName(name.trim(), searchMode);
+      // Load both regular data and ranking data
+      const [regularData, rankingDataResult] = await Promise.all([
+        getDataByName(name.trim(), searchMode),
+        getRankingDataByName(name.trim(), searchMode)
+      ]);
+      
+      data = regularData;
+      rankingData = rankingDataResult;
       
       // Filter by sex if selected
       if (selectedSex !== null) {
         data = data.filter(d => d.sexe === selectedSex);
+        rankingData = rankingData.filter(d => d.sexe === selectedSex);
       }
       
       selectedName = name.trim();
@@ -127,6 +137,7 @@
     } catch (err) {
       error = err.message;
       data = [];
+      rankingData = [];
     } finally {
       loading = false;
     }
@@ -430,6 +441,15 @@
         <h3>📈 Évolution dans le temps</h3>
         <Chart 
           data={data} 
+          height={400}
+        />
+      </div>
+
+      <!-- Ranking Chart -->
+      <div class="chart-section card">
+        <h3>🏆 Évolution du classement</h3>
+        <RankingChart 
+          data={rankingData} 
           height={400}
         />
       </div>
