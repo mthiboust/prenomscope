@@ -547,6 +547,28 @@ export async function getAvailableYears() {
 }
 
 /**
+ * Get total number of births for a specific year and sex
+ * @param {number} sex - Sex (1 = male, 2 = female)
+ * @param {number} year - The year to get total births for
+ * @returns {Promise<number>} Total number of births
+ */
+export async function getTotalBirthsBySexYear(sex, year) {
+  await ensureDatabase();
+  
+  try {
+    const result = await conn.query(`
+      SELECT SUM(valeur) as total_births
+      FROM prenoms
+      WHERE sexe = ${sex} AND periode = ${year}
+    `);
+    return Number(result.toArray()[0].total_births);
+  } catch (err) {
+    console.error("Error getting total births by sex and year:", err);
+    throw err;
+  }
+}
+
+/**
  * Search names by pattern
  * @param {string} pattern - Pattern to search for
  * @param {number} year - Year to search in (optional)

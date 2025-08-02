@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { base } from '$app/paths';
-  import { getDataBySexYearWithRanking, getAvailableYears } from '$lib/data.js';
+  import { getDataBySexYearWithRanking, getAvailableYears, getTotalBirthsBySexYear } from '$lib/data.js';
 
   let years = [];
   let selectedYear = 2024;
@@ -11,6 +11,7 @@
   let itemsPerPage = 50;
   let data = [];
   let totalItems = 0;
+  let totalBirths = 0;
   let loading = false;
   let error = null;
   let isInitialized = false; // Track if the component has been initialized
@@ -105,10 +106,14 @@
       const result = await getDataBySexYearWithRanking(selectedSex, selectedYear, offset, itemsPerPage, searchMode);
       data = result.data;
       totalItems = result.total;
+      
+      // Get total births for the selected year and sex
+      totalBirths = await getTotalBirthsBySexYear(selectedSex, selectedYear);
     } catch (err) {
       error = err.message;
       data = [];
       totalItems = 0;
+      totalBirths = 0;
     } finally {
       loading = false;
     }
@@ -273,7 +278,7 @@
       <div class="ranking card">
         <div class="ranking-title">
           <h3>
-            📊 Top des prénoms {sexLabel} en {selectedYear} • {formatNumber(totalItems)} prénoms au total
+            📊 Top des prénoms {sexLabel} en {selectedYear} • {formatNumber(totalItems)} prénoms pour {formatNumber(totalBirths)} naissances au total
           </h3>
         </div>
         <div class="ranking-header">
